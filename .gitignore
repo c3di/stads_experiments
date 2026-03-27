@@ -66,5 +66,8 @@ secrets/
 # Installer logs
 pip-log.txt
 
+# Aetna logs
+script_log.txt
+
 #stads repo source code
 src/
