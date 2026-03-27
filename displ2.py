@@ -6,10 +6,10 @@ import logging
 import traceback
 from datetime import datetime
 
-from src.stads.stads import AdaptiveSampler
-from src.stads.stratified_sampler import StratifiedSampler
-from src.stads.monitor import save_absolute_error_map, save_pixel_wise_psnr_plots
-from src.stads.config import HYDRATION_ONE, LI_EXPULSION_ONE, LI_EXPULSION_TWO, SI_LITHIATION_ONE
+from src.stadsadaptivesampler.src.stads import AdaptiveSampler
+from src.stads_adaptive_sampler.src.stads.stratified_sampler import StratifiedSampler
+from src.stads_adaptive_sampler.src.stads.monitor import save_absolute_error_map, save_pixel_wise_psnr_plots
+from src.stads_adaptive_sampler.src.stads.config import HYDRATION_ONE, LI_EXPULSION_ONE, LI_EXPULSION_TWO, SI_LITHIATION_ONE
 
 import padis_fsr
 from padis_fsr import generate_mask_for_frame, run_padis_fsr_video_with_masks
