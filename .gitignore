@@ -71,3 +71,6 @@ script_log.txt
 
 #stads repo source code
 src/
+
+#misc
+plots/
