@@ -1,0 +1,70 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# C extensions
+*.pyd
+
+# Virtual environments
+.venv/
+env/
+venv/
+ENV/
+adsamp/
+
+*.env
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# PyCharm
+.idea/
+
+# VS Code
+.vscode/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+
+# pytest
+.pytest_cache/
+
+# coverage
+.coverage
+htmlcov/
+.cache/
+
+# logs
+*.log
+
+# System
+.DS_Store
+Thumbs.db
+
+# Docker
+*.dockerfile
+*.tar
+docker-compose.override.yml
+
+# Compiled Cython files
+*.c
+*.cpp
+
+# Aetna server temp/secure
+tmp/
+secrets/
+*.pem
+*.key
+*.crt
+
+# Installer logs
+pip-log.txt
+
+#stads repo source code
+src/
