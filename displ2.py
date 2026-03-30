@@ -24,19 +24,20 @@ logging.basicConfig(level=logging.INFO)
 GROUNDTRUTH_MAP = {
     "hydration_one": HYDRATION_ONE,
     "li_expulsion_one": LI_EXPULSION_ONE,
-    "li_expulsion_two": LI_EXPULSION_TWO,
+    #"li_expulsion_two": LI_EXPULSION_TWO,
     "si_lithiation_one": SI_LITHIATION_ONE
 }
 
-groundTruthNames = list(GROUNDTRUTH_MAP.keys())
-sparsityPercents = [10, 15, 25, 50]
-temporalSamplerOptions = [True, False]
-temporalReconstructionOptions = [True, False]
+GROUNDTRUTH_NAMES = list(GROUNDTRUTH_MAP.keys())
+SCANNED_PIXELS_PERCENTAGES = list(np.arange(0.5, 10.5, 0.5)) + [0.1, 20]
+TEMPORAL_SAMPLING_OPTIONS = [True, False]
+TEMPORAL_RECONSTRUCTION_OPTIONS = [True, False]
 
 numberOfFrames = 20
 output_dir = "plots"
 os.makedirs(output_dir, exist_ok=True)
 LOGFILE = "script_log.txt"
+CSV_PATH = os.path.join(output_dir, "per_frame_results.csv")
 STANDARD_WORKER_POOL_SIZE = 12
 PADIS_WORKER_POOL_SIZE = 4
 
@@ -68,10 +69,10 @@ def load_video(gt_name, num_frames):
 # --------------------
 # STADS wrapper
 # --------------------
-def run_sampler(gt_name, sparsity, sampler_type, withTemporalSampler, withTemporalReconstruction):
+def run_sampler(gt_name, scanned_pixel_percent, sampler_type, withTemporalSampler, withTemporalReconstruction):
     local_results = []
 
-    log(f"Starting: {sampler_type} | {gt_name} | S={sparsity}% | Temporal={withTemporalSampler}")
+    log(f"Starting: {sampler_type} | {gt_name} | S={scanned_pixel_percent}% | Temporal={withTemporalSampler}")
     try:
         gt_video = load_video(gt_name,numberOfFrames)
         trueNumberOfFrames = min(gt_video.shape[0],numberOfFrames)
@@ -80,7 +81,7 @@ def run_sampler(gt_name, sparsity, sampler_type, withTemporalSampler, withTempor
             sampler = AdaptiveSampler(
                 initialSampling="stratified",
                 interpolMethod="linear",
-                sparsityPercent=sparsity,
+                sparsityPercent=scanned_pixel_percent,
                 numberOfFrames=trueNumberOfFrames,
                 groundTruthName=gt_name,
                 withTemporal=withTemporalSampler#,
@@ -89,7 +90,7 @@ def run_sampler(gt_name, sparsity, sampler_type, withTemporalSampler, withTempor
         else:
             sampler = StratifiedSampler(
                 interpolMethod="linear",
-                sparsityPercent=sparsity,
+                sparsityPercent=scanned_pixel_percent,
                 numberOfFrames=trueNumberOfFrames,
                 groundTruthName=gt_name,
             )
@@ -97,11 +98,11 @@ def run_sampler(gt_name, sparsity, sampler_type, withTemporalSampler, withTempor
         rec_video, PSNRs, SSIMs = sampler.run()
 
         # Save figures
-        example_dir = os.path.join(output_dir, "examples", sampler_type, f"sparsity_{sparsity}", gt_name)
+        example_dir = os.path.join(output_dir, "examples", sampler_type, f"sparsity_{scanned_pixel_percent}", gt_name)
         os.makedirs(example_dir, exist_ok=True)
 
         for frame_idx in range(trueNumberOfFrames):
-            log(f"Skipping saving figures for frame {frame_idx}...")
+            pass
             #sampler.save_figures(frameNumber=frame_idx, save_path=example_dir)
 
         # Collect results (LOCAL!)
@@ -111,16 +112,16 @@ def run_sampler(gt_name, sparsity, sampler_type, withTemporalSampler, withTempor
                 "withTemporalSampler": withTemporalSampler if sampler_type == "adaptive" else False,
                 "withTemporalReconstruction": withTemporalReconstruction if sampler_type == "adaptive" else False,
                 "gt_name": gt_name,
-                "sparsity": sparsity,
+                "scanned_pixel_percent": scanned_pixel_percent,
                 "frame_idx": frame_idx,
                 "PSNR": PSNRs[frame_idx],
                 "SSIM": SSIMs[frame_idx]
             })
 
-        log(f"[DONE] {sampler_type} | {gt_name} | S={sparsity}%")
+        log(f"[DONE] {sampler_type} | {gt_name} | S={scanned_pixel_percent}%")
 
     except Exception as e:
-        log(f"[ERROR] {sampler_type} | {gt_name} | S={sparsity}% | {e}\n{traceback.format_exc()}")
+        log(f"[ERROR] {sampler_type} | {gt_name} | S={scanned_pixel_percent}% | {e}\n{traceback.format_exc()}")
 
     return local_results
 
@@ -134,12 +135,12 @@ class SamplerWorker(threading.Thread):
     def run(self):
         while True:
             try:
-                gt_name, sparsity, sampler_type, withTemporalSampler, withTemporalReconstruction = self.task_queue.get(timeout=5)
-                result = run_sampler(gt_name, sparsity, sampler_type, withTemporalSampler, withTemporalReconstruction)
+                gt_name, scanned_pixel_percent, sampler_type, withTemporalSampler, withTemporalReconstruction = self.task_queue.get(timeout=5)
+                result = run_sampler(gt_name, scanned_pixel_percent, sampler_type, withTemporalSampler, withTemporalReconstruction)
                 if result:
                     self.result_queue.put(result)
                 else:
-                    log(f"[WORKER WARNING] No result for {gt_name} | {sparsity}% | {sampler_type}")
+                    log(f"[WORKER WARNING] No result for {gt_name} | {scanned_pixel_percent}% | {sampler_type}")
                 self.task_queue.task_done()
             except queue.Empty:
                 break
@@ -156,12 +157,12 @@ class PadisWorker(threading.Thread):
     def run(self):
         while True:
             try:
-                gt_name, sparsity = self.padis_queue.get(timeout=5)
-                result = run_padis(gt_name, sparsity)
+                gt_name, scanned_pixel_percent = self.padis_queue.get(timeout=5)
+                result = run_padis(gt_name, scanned_pixel_percent)
                 if result:
                     self.result_queue.put(result)
                 else:
-                    log(f"[PADIS WORKER WARNING] No result for {gt_name} | {sparsity}%")
+                    log(f"[PADIS WORKER WARNING] No result for {gt_name} | {scanned_pixel_percent}%")
                 self.padis_queue.task_done()
             except queue.Empty:
                 break
@@ -172,7 +173,7 @@ class PadisWorker(threading.Thread):
 class OutputWorker(threading.Thread):
     def __init__(self, result_queue, group = None, target = None, name = None, args = ..., kwargs = None, *, daemon = None):
         self.result_queue = result_queue
-        self.fieldnames = ["sampler", "withTemporalSampler", "withTemporalReconstruction", "gt_name", "sparsity", "frame_idx", "PSNR", "SSIM"]
+        self.fieldnames = ["sampler", "withTemporalSampler", "withTemporalReconstruction", "gt_name", "scanned_pixel_percent", "frame_idx", "PSNR", "SSIM"]
         self.csv_path = os.path.join(output_dir, "per_frame_results.csv")
 
         super().__init__(group, target, name, args, kwargs, daemon=daemon)
@@ -205,19 +206,19 @@ class OutputWorker(threading.Thread):
 # --------------------
 # PADIS wrapper
 # --------------------
-def run_padis(gt_name, sparsity):
+def run_padis(gt_name, scanned_pixel_percent):
     local_results = []
 
-    log(f"Starting: PADIS-FSR | {gt_name} | S={sparsity}%")
+    log(f"Starting: PADIS-FSR | {gt_name} | S={scanned_pixel_percent}%")
     try:
         gt_video = load_video(gt_name, numberOfFrames)
         T, H, W = gt_video.shape
 
-        masks = [generate_mask_for_frame(gt_video[t], sparsity).astype(np.uint8) for t in range(T)]
+        masks = [generate_mask_for_frame(gt_video[t], scanned_pixel_percent).astype(np.uint8) for t in range(T)]
         rec_video, psnrs, ssims = run_padis_fsr_video_with_masks(gt_video, masks)
 
         # Save figures
-        example_dir = os.path.join(output_dir, "examples", "padis_fsr", f"sparsity_{sparsity}", gt_name)
+        example_dir = os.path.join(output_dir, "examples", "padis_fsr", f"sparsity_{scanned_pixel_percent}", gt_name)
         os.makedirs(example_dir, exist_ok=True)
 
         for frame_idx in range(T):
@@ -240,16 +241,16 @@ def run_padis(gt_name, sparsity):
                 "withTemporalSampler": False,
                 "withTemporalReconstruction": False,
                 "gt_name": gt_name,
-                "sparsity": sparsity,
+                "sparsity": scanned_pixel_percent,
                 "frame_idx": frame_idx,
                 "PSNR": psnrs[frame_idx],
                 "SSIM": ssims[frame_idx]
             })
 
-        log(f"[DONE] PADIS-FSR | {gt_name} | S={sparsity}%")
+        log(f"[DONE] PADIS-FSR | {gt_name} | S={scanned_pixel_percent}%")
 
     except Exception as e:
-        log(f"[ERROR] PADIS-FSR | {gt_name} | S={sparsity}% | {e}\n{traceback.format_exc()}")
+        log(f"[ERROR] PADIS-FSR | {gt_name} | S={scanned_pixel_percent}% | {e}\n{traceback.format_exc()}")
 
     return local_results
 
@@ -261,27 +262,31 @@ def main():
     if os.path.exists(LOGFILE):
         os.remove(LOGFILE)
 
+    if os.path.exists(CSV_PATH):
+        os.remove(CSV_PATH)
+
     task_queue = queue.Queue()
     padis_queue = queue.Queue()
     result_queue = queue.Queue()
 
     #experimental conditions: Main method: adaptive, with/without temporal sampler, with/without temporal reconstruction
-    for gt_name in groundTruthNames:
-        for sparsity in sparsityPercents:
-            for withTemporalSampler in temporalSamplerOptions:
-                for withTemporalReconstruction in temporalReconstructionOptions:
-                    task_queue.put((gt_name, sparsity, "adaptive", withTemporalSampler, withTemporalReconstruction))
+    for gt_name in GROUNDTRUTH_NAMES:
+        for scanned_pixel_percent in SCANNED_PIXELS_PERCENTAGES:
+            for withTemporalSampler in TEMPORAL_SAMPLING_OPTIONS:
+                task_queue.put((gt_name, scanned_pixel_percent, "adaptive", withTemporalSampler, True))
+                #for withTemporalReconstruction in temporalReconstructionOptions:
+                    #task_queue.put((gt_name, scanned_pixel_percent, "adaptive", withTemporalSampler, withTemporalReconstruction))
 
     # Stratified baseline
-    for gt_name in groundTruthNames:
-        for sparsity in sparsityPercents:
-            task_queue.put((gt_name, sparsity, "stratified", None, None))
+    for gt_name in GROUNDTRUTH_NAMES:
+        for scanned_pixel_percent in SCANNED_PIXELS_PERCENTAGES:
+            task_queue.put((gt_name, scanned_pixel_percent, "stratified", None, None))
     
     # PADIS-FSR 
     """
     for gt_name in groundTruthNames:
-        for sparsity in sparsityPercents:
-            padis_queue.put((gt_name, sparsity))
+        for scanned_pixel_percent in scannedPixelsPercent:
+            padis_queue.put((gt_name, scanned_pixel_percent))
     """
     
 
@@ -300,8 +305,7 @@ def main():
     result_queue.put(None)  # Signal output worker to stop
     output_worker.join()
     log("===== All Runs Completed =====")
-    csv_path = os.path.join(output_dir, "per_frame_results.csv")
-    log(f"Saved per-frame results to {csv_path}")
+    log(f"Saved per-frame results to {CSV_PATH}")
 
 if __name__ == "__main__":
     main()
