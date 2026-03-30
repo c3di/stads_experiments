@@ -37,7 +37,7 @@ numberOfFrames = 20
 output_dir = "plots"
 os.makedirs(output_dir, exist_ok=True)
 LOGFILE = "script_log.txt"
-STANDARD_WORKER_POOL_SIZE = 8
+STANDARD_WORKER_POOL_SIZE = 12
 PADIS_WORKER_POOL_SIZE = 4
 
 
@@ -101,7 +101,8 @@ def run_sampler(gt_name, sparsity, sampler_type, withTemporalSampler, withTempor
         os.makedirs(example_dir, exist_ok=True)
 
         for frame_idx in range(trueNumberOfFrames):
-            sampler.save_figures(frameNumber=frame_idx, save_path=example_dir)
+            log(f"Skipping saving figures for frame {frame_idx}...")
+            #sampler.save_figures(frameNumber=frame_idx, save_path=example_dir)
 
         # Collect results (LOCAL!)
         for frame_idx in range(trueNumberOfFrames):
@@ -183,9 +184,11 @@ class OutputWorker(threading.Thread):
                 if results:
                     df = pd.DataFrame(results)
                     if not os.path.exists(self.csv_path):
+                        log(f"[OUTPUT WORKER INFO] Creating new CSV file: {self.csv_path}")
                         df.to_csv(self.csv_path, index=False, columns=self.fieldnames)
                     else:
                         df.to_csv(self.csv_path, index=False, mode='a', header=False, columns=self.fieldnames)
+                        log(f"[OUTPUT WORKER INFO] Appended results to CSV file: {self.csv_path}")
                 else:
                     if not self.result_queue.empty():
                         log(f"[OUTPUT WORKER WARNING] Received empty result and non-empty queue.")
@@ -274,10 +277,12 @@ def main():
         for sparsity in sparsityPercents:
             task_queue.put((gt_name, sparsity, "stratified", None, None))
     
-    # PADIS-FSR
+    # PADIS-FSR 
+    """
     for gt_name in groundTruthNames:
         for sparsity in sparsityPercents:
             padis_queue.put((gt_name, sparsity))
+    """
     
 
     standard_workers = [SamplerWorker(task_queue, result_queue) for _ in range(STANDARD_WORKER_POOL_SIZE)]
