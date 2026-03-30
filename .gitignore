@@ -72,5 +72,6 @@ script_log.txt
 #stads repo source code
 src/
 
-#misc
+# Generated output files
 plots/
+movie_analysis/
