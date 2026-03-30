@@ -154,7 +154,5 @@ def generate_averaged_metric_vs_scanned_pixel_plots(
 
 
 if __name__ == "__main__":
-	#generate_framewise_line_plots("C:\\Users\\chwo02\\Downloads\\per_frame_results.csv", "C:\\Users\\chwo02\\Downloads")
-	#generate_averaged_metric_vs_scanned_pixel_plots("C:\\Users\\chwo02\\Downloads\\per_frame_results.csv", "C:\\Users\\chwo02\\Downloads")
 	generate_averaged_metric_vs_scanned_pixel_plots()
 	generate_framewise_line_plots()
