@@ -3,6 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 
 import imageio.v3 as iio
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -107,6 +109,35 @@ def generate_framewise_change_plots(per_frame_results_df: pd.DataFrame, output_d
 		plt.close()
 
 
+def generate_entropy_statistics_plot(per_frame_results_df: pd.DataFrame, output_dir: str | Path) -> None:
+	output_dir = Path(output_dir)
+	output_dir.mkdir(parents=True, exist_ok=True)
+
+	plot_df = per_frame_results_df[["movie_name", "entropy"]].dropna()
+
+	sns.set_theme(style="whitegrid", context="talk")
+
+	fig, ax = plt.subplots(figsize=(max(6, len(plot_df["movie_name"].unique()) * 1.5), 6))
+
+	sns.barplot(
+		data=plot_df,
+		x="movie_name",
+		y="entropy",
+		errorbar="sd",
+		capsize=0.15,
+		palette="tab10",
+		ax=ax,
+	)
+
+	ax.set_title("Shannon Entropy per Movie (mean ± SD)")
+	ax.set_xlabel("Movie")
+	ax.set_ylabel("Shannon Entropy")
+	ax.tick_params(axis="x", rotation=45)
+	plt.tight_layout()
+	fig.savefig(output_dir / "entropy_per_movie_barplot.png", dpi=300)
+	plt.close(fig)
+
+
 def analyze_movies(input_path: str | Path, output_dir: str | Path = "plots/statistics") -> tuple[pd.DataFrame, pd.DataFrame]:
 	input_path = Path(input_path)
 	output_dir = Path(output_dir)
@@ -126,6 +157,9 @@ def analyze_movies(input_path: str | Path, output_dir: str | Path = "plots/stati
 	all_summary: list[dict[str, float | str | int]] = []
 
 	for movie_path in movie_paths:
+		if "Lithiation" in movie_path.stem:
+			continue
+
 		per_frame_df, summary = analyze_tif_movie(movie_path)
 		all_per_frame.append(per_frame_df)
 		all_summary.append(summary)
@@ -139,6 +173,7 @@ def analyze_movies(input_path: str | Path, output_dir: str | Path = "plots/stati
 	per_frame_results_df.to_csv(per_frame_csv, index=False)
 	summary_results_df.to_csv(summary_csv, index=False)
 	generate_framewise_change_plots(per_frame_results_df, output_dir)
+	generate_entropy_statistics_plot(per_frame_results_df, output_dir)
 
 	print(f"Saved frame-wise results: {per_frame_csv}")
 	print(f"Saved movie summary results: {summary_csv}")
