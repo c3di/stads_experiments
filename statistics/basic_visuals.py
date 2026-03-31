@@ -15,32 +15,27 @@ def generate_framewise_line_plots(
 
 	df = pd.read_csv(csv_path)
 
-	required_columns = {
-		"gt_name",
-		"frame_idx",
-		"scanned_pixel_percent",
-		"withTemporalSampler",
-		"PSNR",
-		"SSIM",
-	}
-	missing_columns = required_columns - set(df.columns)
-	if missing_columns:
-		missing = ", ".join(sorted(missing_columns))
-		raise ValueError(f"Missing required columns in CSV: {missing}")
-
 	df = df.copy()
 	df["frame_idx"] = pd.to_numeric(df["frame_idx"], errors="coerce")
 	df["scanned_pixel_percent"] = pd.to_numeric(df["scanned_pixel_percent"], errors="coerce")
 	df["withTemporalSampler"] = df["withTemporalSampler"].fillna("False").astype(str).str.strip()
 	df.loc[df["withTemporalSampler"].eq(""), "withTemporalSampler"] = "False"
 	df = df.dropna(subset=["frame_idx", "scanned_pixel_percent", "PSNR", "SSIM"])
+	df["withTemporalReconstruction"] = df["withTemporalReconstruction"].fillna("False").astype(str).str.strip()
+	df.loc[df["withTemporalReconstruction"].eq(""), "withTemporalReconstruction"] = "False"
 
 	df["frame_idx"] = df["frame_idx"].astype(int)
 
 	sns.set_theme(style="whitegrid", context="talk")
 
-	for gt_name, gt_df in df.groupby("gt_name", sort=True):
-		gt_df = gt_df.sort_values(["scanned_pixel_percent", "withTemporalSampler", "frame_idx"])
+	df["group_label"] = (
+	df["sampler"]
+	+ " | TS=" + df["withTemporalSampler"]
+	+ " | TR=" + df["withTemporalReconstruction"]
+)
+
+	for scanned_pixel_percent, gt_df in df.groupby("scanned_pixel_percent", sort=True):
+		gt_df = gt_df.sort_values(["gt_name", "group_label", "frame_idx"])
 
 		for metric in ["PSNR", "SSIM"]:
 			plt.figure(figsize=(12, 6))
@@ -48,25 +43,25 @@ def generate_framewise_line_plots(
 				data=gt_df,
 				x="frame_idx",
 				y=metric,
-				hue="scanned_pixel_percent",
-				style="withTemporalSampler",
+				hue="group_label",
+				style="gt_name",
 				markers=True,
 				dashes=False,
 				errorbar=None,
 			)
 
-			plt.title(f"{metric} vs frame_idx | {gt_name}")
+			plt.title(f"{metric} vs frame_idx | {scanned_pixel_percent}% scanned pixels")
 			plt.xlabel("frame_idx")
 			plt.ylabel(metric)
 			plt.legend(
-				title="scanned_pixel_percent / withTemporalSampler",
+				title="scanned_pixel_percent / group_label",
 				bbox_to_anchor=(1.02, 1),
 				loc="upper left",
 				borderaxespad=0,
 			)
 			plt.tight_layout()
 
-			output_path = output_dir / f"{gt_name}_{metric.lower()}_lineplot.png"
+			output_path = output_dir / f"{scanned_pixel_percent}_{metric.lower()}_lineplot.png"
 			plt.savefig(output_path, dpi=300)
 			plt.close()
 
@@ -81,20 +76,6 @@ def generate_averaged_metric_vs_scanned_pixel_plots(
 
 	df = pd.read_csv(csv_path)
 
-	required_columns = {
-		"gt_name",
-		"sampler",
-		"withTemporalSampler",
-		"scanned_pixel_percent",
-		"frame_idx",
-		"PSNR",
-		"SSIM",
-	}
-	missing_columns = required_columns - set(df.columns)
-	if missing_columns:
-		missing = ", ".join(sorted(missing_columns))
-		raise ValueError(f"Missing required columns in CSV: {missing}")
-
 	df = df.copy()
 	df["frame_idx"] = pd.to_numeric(df["frame_idx"], errors="coerce")
 	df["scanned_pixel_percent"] = pd.to_numeric(df["scanned_pixel_percent"], errors="coerce")
@@ -102,6 +83,8 @@ def generate_averaged_metric_vs_scanned_pixel_plots(
 	df["SSIM"] = pd.to_numeric(df["SSIM"], errors="coerce")
 	df["withTemporalSampler"] = df["withTemporalSampler"].fillna("False").astype(str).str.strip()
 	df.loc[df["withTemporalSampler"].eq(""), "withTemporalSampler"] = "False"
+	df["withTemporalReconstruction"] = df["withTemporalReconstruction"].fillna("False").astype(str).str.strip()
+	df.loc[df["withTemporalReconstruction"].eq(""), "withTemporalReconstruction"] = "False"
 	df = df.dropna(
 		subset=[
 			"gt_name",
@@ -116,9 +99,15 @@ def generate_averaged_metric_vs_scanned_pixel_plots(
 	df["sampler"] = df["sampler"].astype(str)
 
 	aggregated_df = (
-		df.groupby(["gt_name", "sampler", "withTemporalSampler", "scanned_pixel_percent"], as_index=False)[["PSNR", "SSIM"]]
+		df.groupby(["gt_name", "sampler", "withTemporalSampler", "withTemporalReconstruction", "scanned_pixel_percent"], as_index=False)[["PSNR", "SSIM"]]
 		.mean()
-		.sort_values(["gt_name", "sampler", "withTemporalSampler", "scanned_pixel_percent"])
+		.sort_values(["gt_name", "sampler", "withTemporalSampler", "withTemporalReconstruction", "scanned_pixel_percent"])
+	)
+
+	aggregated_df["group_label"] = (
+		aggregated_df["sampler"]
+		+ " | TS=" + aggregated_df["withTemporalSampler"]
+		+ " | TR=" + aggregated_df["withTemporalReconstruction"]
 	)
 
 	sns.set_theme(style="whitegrid", context="talk")
@@ -130,8 +119,7 @@ def generate_averaged_metric_vs_scanned_pixel_plots(
 				data=gt_df,
 				x="scanned_pixel_percent",
 				y=metric,
-				hue="sampler",
-				style="withTemporalSampler",
+				hue="group_label",
 				markers=True,
 				dashes=False,
 				errorbar=None,
@@ -141,7 +129,7 @@ def generate_averaged_metric_vs_scanned_pixel_plots(
 			plt.xlabel("scanned_pixel_percent")
 			plt.ylabel(f"Average {metric}")
 			plt.legend(
-				title="sampler / withTemporalSampler",
+				title="sampler | TS | TR",
 				bbox_to_anchor=(1.02, 1),
 				loc="upper left",
 				borderaxespad=0,
