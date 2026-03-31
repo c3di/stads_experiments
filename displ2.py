@@ -11,7 +11,7 @@ from datetime import datetime
 from src.stadsadaptivesampler.src.stads.stads import AdaptiveSampler
 from src.stadsadaptivesampler.src.stads.stratified_sampler import StratifiedSampler
 from src.stadsadaptivesampler.src.stads.monitor import save_absolute_error_map, save_pixel_wise_psnr_plots
-from src.stadsadaptivesampler.src.stads.config import HYDRATION_ONE, LI_EXPULSION_ONE, LI_EXPULSION_TWO, SI_LITHIATION_ONE
+from src.stadsadaptivesampler.src.stads.config import HYDRATION_ONE, LI_EXPULSION_ONE, LI_EXPULSION_TWO, SI_LITHIATION_ONE, EDS_AEROSPACE_ONE, EDS_AEROSPACE_TWO, TITANIUM_STRAIN_ONE
 
 import padis_fsr
 from padis_fsr import generate_mask_for_frame, run_padis_fsr_video_with_masks
@@ -24,12 +24,15 @@ logging.basicConfig(level=logging.INFO)
 GROUNDTRUTH_MAP = {
     "hydration_one": HYDRATION_ONE,
     "li_expulsion_one": LI_EXPULSION_ONE,
-    #"li_expulsion_two": LI_EXPULSION_TWO,
-    "si_lithiation_one": SI_LITHIATION_ONE
+    "li_expulsion_two": LI_EXPULSION_TWO,
+    "si_lithiation_one": SI_LITHIATION_ONE,
+    "eds_aerospace_one": EDS_AEROSPACE_ONE,
+    "eds_aerospace_two": EDS_AEROSPACE_TWO,
+    "titanium_strain_one": TITANIUM_STRAIN_ONE
 }
 
 GROUNDTRUTH_NAMES = list(GROUNDTRUTH_MAP.keys())
-SCANNED_PIXELS_PERCENTAGES = list(np.arange(0.5, 10.5, 0.5)) + [0.1, 20]
+SCANNED_PIXELS_PERCENTAGES = list(np.arange(0.5, 5.5, 0.5)) + [0.1, 7.0, 10.0, 20.0]
 TEMPORAL_SAMPLING_OPTIONS = [True, False]
 TEMPORAL_RECONSTRUCTION_OPTIONS = [True, False]
 
@@ -38,8 +41,8 @@ output_dir = "plots"
 os.makedirs(output_dir, exist_ok=True)
 LOGFILE = "script_log.txt"
 CSV_PATH = os.path.join(output_dir, "per_frame_results.csv")
-STANDARD_WORKER_POOL_SIZE = 12
-PADIS_WORKER_POOL_SIZE = 4
+STANDARD_WORKER_POOL_SIZE = 6
+PADIS_WORKER_POOL_SIZE = 1
 
 
 # --------------------
@@ -84,8 +87,8 @@ def run_sampler(gt_name, scanned_pixel_percent, sampler_type, withTemporalSample
                 sparsityPercent=scanned_pixel_percent,
                 numberOfFrames=trueNumberOfFrames,
                 groundTruthName=gt_name,
-                withTemporal=withTemporalSampler#,
-                #withTemporalReconstruction=withTemporalReconstruction
+                withTemporalSampling=withTemporalSampler,
+                withTemporalReconstruction=withTemporalReconstruction
             )
         else:
             sampler = StratifiedSampler(
@@ -269,18 +272,17 @@ def main():
     padis_queue = queue.Queue()
     result_queue = queue.Queue()
 
-    #experimental conditions: Main method: adaptive, with/without temporal sampler, with/without temporal reconstruction
-    for gt_name in GROUNDTRUTH_NAMES:
-        for scanned_pixel_percent in SCANNED_PIXELS_PERCENTAGES:
-            for withTemporalSampler in TEMPORAL_SAMPLING_OPTIONS:
-                task_queue.put((gt_name, scanned_pixel_percent, "adaptive", withTemporalSampler, True))
-                #for withTemporalReconstruction in temporalReconstructionOptions:
-                    #task_queue.put((gt_name, scanned_pixel_percent, "adaptive", withTemporalSampler, withTemporalReconstruction))
-
     # Stratified baseline
     for gt_name in GROUNDTRUTH_NAMES:
         for scanned_pixel_percent in SCANNED_PIXELS_PERCENTAGES:
             task_queue.put((gt_name, scanned_pixel_percent, "stratified", None, None))
+
+    #experimental conditions: Main method: adaptive, with/without temporal sampler, with/without temporal reconstruction
+    for gt_name in GROUNDTRUTH_NAMES:
+        for scanned_pixel_percent in SCANNED_PIXELS_PERCENTAGES:
+            for has_temporal_sampler in TEMPORAL_SAMPLING_OPTIONS:
+                for has_temporal_reconstruction in TEMPORAL_RECONSTRUCTION_OPTIONS:
+                    task_queue.put((gt_name, scanned_pixel_percent, "adaptive", has_temporal_sampler, has_temporal_reconstruction))
     
     # PADIS-FSR 
     """
