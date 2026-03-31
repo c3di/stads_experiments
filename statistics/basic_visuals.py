@@ -5,6 +5,37 @@ import pandas as pd
 import seaborn as sns
 
 
+def _format_group_label(
+	sampler: str,
+	with_temporal_sampler: str,
+	with_temporal_reconstruction: str,
+) -> str:
+	sampler_value = str(sampler).strip()
+	ts_value = str(with_temporal_sampler).strip()
+	tr_value = str(with_temporal_reconstruction).strip()
+
+	sampler_lower = sampler_value.lower()
+	ts_enabled = ts_value.lower() == "true"
+	tr_enabled = tr_value.lower() == "true"
+
+	if sampler_lower == "adaptive" and ts_enabled and tr_enabled:
+		return "Full"
+	if sampler_lower == "stratified" and not ts_enabled and not tr_enabled:
+		return "Baseline"
+	
+	if sampler_lower == "adaptive" and not ts_enabled and not tr_enabled:
+		return "No Temporal Sampling/Reconstruction"
+	
+	if sampler_lower == "adaptive" and ts_enabled and not tr_enabled:
+		return "Temporal Sampling Only"
+	
+	if sampler_lower == "adaptive" and not ts_enabled and tr_enabled:
+		return "Temporal Reconstruction Only"
+
+
+	return f"{sampler_value} | TS={ts_value} | TR={tr_value}"
+
+
 def generate_framewise_line_plots(
 	csv_path: str | Path = "plots/per_frame_results.csv",
 	output_dir: str | Path = "plots/statistics",
@@ -23,16 +54,22 @@ def generate_framewise_line_plots(
 	df = df.dropna(subset=["frame_idx", "scanned_pixel_percent", "PSNR", "SSIM"])
 	df["withTemporalReconstruction"] = df["withTemporalReconstruction"].fillna("False").astype(str).str.strip()
 	df.loc[df["withTemporalReconstruction"].eq(""), "withTemporalReconstruction"] = "False"
+	df["sampler"] = df["sampler"].astype(str)
 
 	df["frame_idx"] = df["frame_idx"].astype(int)
 
 	sns.set_theme(style="whitegrid", context="talk")
 
 	df["group_label"] = (
-	df["sampler"]
-	+ " | TS=" + df["withTemporalSampler"]
-	+ " | TR=" + df["withTemporalReconstruction"]
-)
+		df.apply(
+			lambda row: _format_group_label(
+				row["sampler"],
+				row["withTemporalSampler"],
+				row["withTemporalReconstruction"],
+			),
+			axis=1,
+		)
+	)
 
 	for scanned_pixel_percent, gt_df in df.groupby("scanned_pixel_percent", sort=True):
 		gt_df = gt_df.sort_values(["gt_name", "group_label", "frame_idx"])
@@ -105,9 +142,14 @@ def generate_averaged_metric_vs_scanned_pixel_plots(
 	)
 
 	aggregated_df["group_label"] = (
-		aggregated_df["sampler"]
-		+ " | TS=" + aggregated_df["withTemporalSampler"]
-		+ " | TR=" + aggregated_df["withTemporalReconstruction"]
+		aggregated_df.apply(
+			lambda row: _format_group_label(
+				row["sampler"],
+				row["withTemporalSampler"],
+				row["withTemporalReconstruction"],
+			),
+			axis=1,
+		)
 	)
 
 	sns.set_theme(style="whitegrid", context="talk")
