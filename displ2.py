@@ -72,10 +72,10 @@ def load_video(gt_name, num_frames):
 # --------------------
 # STADS wrapper
 # --------------------
-def run_sampler(gt_name, scanned_pixel_percent, sampler_type, withTemporalSampler, withTemporalReconstruction):
+def run_sampler(gt_name, scanned_pixel_percent, sampler_type, has_temporal_sampler, has_temporal_reconstruction):
     local_results = []
 
-    log(f"Starting: {sampler_type} | {gt_name} | S={scanned_pixel_percent}% | Temporal={withTemporalSampler}")
+    log(f"Starting: {sampler_type} | {gt_name} | S={scanned_pixel_percent}% | SamplerTemporal={has_temporal_sampler} | ReconstructionTemporal={has_temporal_reconstruction}")
     try:
         gt_video = load_video(gt_name,numberOfFrames)
         trueNumberOfFrames = min(gt_video.shape[0],numberOfFrames)
@@ -87,8 +87,8 @@ def run_sampler(gt_name, scanned_pixel_percent, sampler_type, withTemporalSample
                 sparsityPercent=scanned_pixel_percent,
                 numberOfFrames=trueNumberOfFrames,
                 groundTruthName=gt_name,
-                withTemporalSampling=withTemporalSampler,
-                withTemporalReconstruction=withTemporalReconstruction
+                withTemporalSampling=has_temporal_sampler,
+                withTemporalReconstruction=has_temporal_reconstruction
             )
         else:
             sampler = StratifiedSampler(
@@ -112,8 +112,8 @@ def run_sampler(gt_name, scanned_pixel_percent, sampler_type, withTemporalSample
         for frame_idx in range(trueNumberOfFrames):
             local_results.append({
                 "sampler": sampler_type,
-                "withTemporalSampler": withTemporalSampler if sampler_type == "adaptive" else False,
-                "withTemporalReconstruction": withTemporalReconstruction if sampler_type == "adaptive" else False,
+                "withTemporalSampler": has_temporal_sampler if sampler_type == "adaptive" else False,
+                "withTemporalReconstruction": has_temporal_reconstruction if sampler_type == "adaptive" else False,
                 "gt_name": gt_name,
                 "scanned_pixel_percent": scanned_pixel_percent,
                 "frame_idx": frame_idx,
@@ -138,8 +138,8 @@ class SamplerWorker(threading.Thread):
     def run(self):
         while True:
             try:
-                gt_name, scanned_pixel_percent, sampler_type, withTemporalSampler, withTemporalReconstruction = self.task_queue.get(timeout=5)
-                result = run_sampler(gt_name, scanned_pixel_percent, sampler_type, withTemporalSampler, withTemporalReconstruction)
+                gt_name, scanned_pixel_percent, sampler_type, has_temporal_sampler, has_temporal_reconstruction = self.task_queue.get(timeout=5)
+                result = run_sampler(gt_name, scanned_pixel_percent, sampler_type, has_temporal_sampler, has_temporal_reconstruction)
                 if result:
                     self.result_queue.put(result)
                 else:
