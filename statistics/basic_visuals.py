@@ -36,6 +36,23 @@ def _format_group_label(
 	return f"{sampler_value} | TS={ts_value} | TR={tr_value}"
 
 
+def _build_group_palette(group_labels: list[str]) -> dict[str, tuple[float, float, float] | str]:
+	labels = [str(label) for label in group_labels]
+	palette: dict[str, tuple[float, float, float] | str] = {}
+
+	# Keep Baseline visually distinct while other groups stay in a similar spectrum.
+	if "Baseline" in labels:
+		palette["Baseline"] = "#d62728"
+
+	non_baseline_labels = [label for label in labels if label != "Baseline"]
+	if non_baseline_labels:
+		close_colors = sns.color_palette("Blues", n_colors=len(non_baseline_labels) + 2)[2:]
+		for label, color in zip(non_baseline_labels, close_colors):
+			palette[label] = color
+
+	return palette
+
+
 def generate_framewise_line_plots(
 	csv_path: str | Path = "plots/per_frame_results.csv",
 	output_dir: str | Path = "plots/statistics",
@@ -73,6 +90,8 @@ def generate_framewise_line_plots(
 
 	for scanned_pixel_percent, gt_df in df.groupby("scanned_pixel_percent", sort=True):
 		gt_df = gt_df.sort_values(["gt_name", "group_label", "frame_idx"])
+		group_order = sorted(gt_df["group_label"].dropna().unique().tolist())
+		group_palette = _build_group_palette(group_order)
 
 		for metric in ["PSNR", "SSIM"]:
 			plt.figure(figsize=(12, 6))
@@ -81,9 +100,12 @@ def generate_framewise_line_plots(
 				x="frame_idx",
 				y=metric,
 				hue="group_label",
+				hue_order=group_order,
+				palette=group_palette,
 				style="gt_name",
 				markers=True,
 				dashes=False,
+				linewidth=1.4,
 				errorbar=None,
 			)
 
@@ -155,6 +177,8 @@ def generate_averaged_metric_vs_scanned_pixel_plots(
 			axis=1,
 		)
 	)
+	group_order = sorted(aggregated_df["group_label"].dropna().unique().tolist())
+	group_palette = _build_group_palette(group_order)
 
 	sns.set_theme(style="whitegrid", context="talk")
 
@@ -166,10 +190,13 @@ def generate_averaged_metric_vs_scanned_pixel_plots(
 				x="scanned_pixel_percent",
 				y=metric,
 				hue="group_label",
+				hue_order=group_order,
+				palette=group_palette,
 				marker="X",
 				markersize=5,
 				markeredgewidth=0,
 				dashes=False,
+				linewidth=1.4,
 				errorbar=None,
 			)
 
