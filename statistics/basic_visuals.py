@@ -90,6 +90,10 @@ def generate_framewise_line_plots(
 			plt.title(f"{metric} vs frame_idx | {scanned_pixel_percent}% scanned pixels")
 			plt.xlabel("frame_idx")
 			plt.ylabel(metric)
+			if metric == "SSIM":
+				plt.ylim(0, 1.0)
+			else:
+				plt.ylim(bottom=0)
 			plt.legend(
 				title="scanned_pixel_percent / group_label",
 				bbox_to_anchor=(1.02, 1),
@@ -162,7 +166,9 @@ def generate_averaged_metric_vs_scanned_pixel_plots(
 				x="scanned_pixel_percent",
 				y=metric,
 				hue="group_label",
-				markers=True,
+				marker="X",
+				markersize=5,
+				markeredgewidth=0,
 				dashes=False,
 				errorbar=None,
 			)
@@ -170,6 +176,10 @@ def generate_averaged_metric_vs_scanned_pixel_plots(
 			plt.title(f"Average {metric} vs scanned_pixel_percent | {gt_name}")
 			plt.xlabel("scanned_pixel_percent")
 			plt.ylabel(f"Average {metric}")
+			if metric == "SSIM":
+				plt.ylim(0, 1.0)
+			else:
+				plt.ylim(bottom=0)
 			plt.legend(
 				title="sampler | TS | TR",
 				bbox_to_anchor=(1.02, 1),
