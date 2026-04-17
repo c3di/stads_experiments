@@ -33,6 +33,7 @@ GROUNDTRUTH_MAP = {
 
 GROUNDTRUTH_NAMES = list(GROUNDTRUTH_MAP.keys())
 SCANNED_PIXELS_PERCENTAGES = list(np.arange(0.5, 5.5, 0.5)) + [0.1, 7.0, 10.0, 20.0]
+ALPHAS = list(np.arange(0.4, 2, 0.4))
 TEMPORAL_SAMPLING_OPTIONS = [True, False]
 TEMPORAL_RECONSTRUCTION_OPTIONS = [True, False]
 
@@ -72,10 +73,10 @@ def load_video(gt_name, num_frames):
 # --------------------
 # STADS wrapper
 # --------------------
-def run_sampler(gt_name, scanned_pixel_percent, sampler_type, has_temporal_sampler, has_temporal_reconstruction):
+def run_sampler(gt_name, sparsity, sampler_type, has_temporal_sampler=True,has_temporal_reconstruction=True,alpha=None):
     local_results = []
 
-    log(f"Starting: {sampler_type} | {gt_name} | S={scanned_pixel_percent}% | SamplerTemporal={has_temporal_sampler} | ReconstructionTemporal={has_temporal_reconstruction}")
+    log(f"Starting: {sampler_type} | {gt_name} | S={scanned_pixel_percent}% | SamplerTemporal={has_temporal_sampler}| ReconstructionTemporal={has_temporal_reconstruction} | alpha={alpha}")
     try:
         gt_video = load_video(gt_name,numberOfFrames)
         trueNumberOfFrames = min(gt_video.shape[0],numberOfFrames)
@@ -87,6 +88,7 @@ def run_sampler(gt_name, scanned_pixel_percent, sampler_type, has_temporal_sampl
                 sparsityPercent=scanned_pixel_percent,
                 numberOfFrames=trueNumberOfFrames,
                 groundTruthName=gt_name,
+                alpha=alpha,
                 withTemporalSampling=has_temporal_sampler,
                 withTemporalReconstruction=has_temporal_reconstruction
             )
@@ -118,7 +120,8 @@ def run_sampler(gt_name, scanned_pixel_percent, sampler_type, has_temporal_sampl
                 "scanned_pixel_percent": scanned_pixel_percent,
                 "frame_idx": frame_idx,
                 "PSNR": PSNRs[frame_idx],
-                "SSIM": SSIMs[frame_idx]
+                "SSIM": SSIMs[frame_idx],
+                "alpha": alpha if (sampler_type == "adaptive" and has_temporal_reconstruction) else None
             })
 
         log(f"[DONE] {sampler_type} | {gt_name} | S={scanned_pixel_percent}%")
@@ -138,7 +141,7 @@ class SamplerWorker(threading.Thread):
     def run(self):
         while True:
             try:
-                gt_name, scanned_pixel_percent, sampler_type, has_temporal_sampler, has_temporal_reconstruction = self.task_queue.get(timeout=5)
+                gt_name, scanned_pixel_percent, sampler_type, has_temporal_sampler, has_temporal_reconstruction, alpha = self.task_queue.get(timeout=5)
                 result = run_sampler(gt_name, scanned_pixel_percent, sampler_type, has_temporal_sampler, has_temporal_reconstruction)
                 if result:
                     self.result_queue.put(result)
@@ -176,7 +179,7 @@ class PadisWorker(threading.Thread):
 class OutputWorker(threading.Thread):
     def __init__(self, result_queue, group = None, target = None, name = None, args = ..., kwargs = None, *, daemon = None):
         self.result_queue = result_queue
-        self.fieldnames = ["sampler", "withTemporalSampler", "withTemporalReconstruction", "gt_name", "scanned_pixel_percent", "frame_idx", "PSNR", "SSIM"]
+        self.fieldnames = ["sampler", "withTemporalSampler", "withTemporalReconstruction", "gt_name", "scanned_pixel_percent", "frame_idx", "PSNR", "SSIM", "alpha"]
         self.csv_path = os.path.join(output_dir, "per_frame_results.csv")
 
         super().__init__(group, target, name, args, kwargs, daemon=daemon)
@@ -280,9 +283,11 @@ def main():
     #experimental conditions: Main method: adaptive, with/without temporal sampler, with/without temporal reconstruction
     for gt_name in GROUNDTRUTH_NAMES:
         for scanned_pixel_percent in SCANNED_PIXELS_PERCENTAGES:
-            for has_temporal_sampler in TEMPORAL_SAMPLING_OPTIONS:
-                for has_temporal_reconstruction in TEMPORAL_RECONSTRUCTION_OPTIONS:
-                    task_queue.put((gt_name, scanned_pixel_percent, "adaptive", has_temporal_sampler, has_temporal_reconstruction))
+            task_queue.put((gt_name, scanned_pixel_percent, "adaptive", True, False))
+            task_queue.put((gt_name, scanned_pixel_percent, "adaptive", False, False))
+            for alpha in ALPHAS:
+                task_queue.put((gt_name, scanned_pixel_percent, "adaptive", True, True,alpha))
+                task_queue.put((gt_name, scanned_pixel_percent, "adaptive", False, True,alpha))
     
     # PADIS-FSR 
     """
