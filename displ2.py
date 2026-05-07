@@ -1,16 +1,19 @@
 import os
+import time
 import numpy as np
 import pandas as pd
 import concurrent.futures
+from concurrent.futures import ProcessPoolExecutor
 import queue
 import threading
 import logging
 import traceback
 from datetime import datetime
+import delauney
 
 from src.stadsadaptivesampler.src.stads.stads import AdaptiveSampler
 from src.stadsadaptivesampler.src.stads.stratified_sampler import StratifiedSampler
-from src.stadsadaptivesampler.src.stads.monitor import save_absolute_error_map, save_pixel_wise_psnr_plots
+from src.stadsadaptivesampler.src.stads.monitor import save_error_map, save_pixel_wise_psnr_plots
 from src.stadsadaptivesampler.src.stads.config import HYDRATION_ONE, LI_EXPULSION_ONE, LI_EXPULSION_TWO, SI_LITHIATION_ONE, EDS_AEROSPACE_ONE, EDS_AEROSPACE_TWO, TITANIUM_STRAIN_ONE
 
 import padis_fsr
@@ -23,26 +26,26 @@ logging.basicConfig(level=logging.INFO)
 # --------------------
 GROUNDTRUTH_MAP = {
     "hydration_one": HYDRATION_ONE,
-    "li_expulsion_one": LI_EXPULSION_ONE,
-    "li_expulsion_two": LI_EXPULSION_TWO,
-    "si_lithiation_one": SI_LITHIATION_ONE,
-    "eds_aerospace_one": EDS_AEROSPACE_ONE,
-    "eds_aerospace_two": EDS_AEROSPACE_TWO,
-    "titanium_strain_one": TITANIUM_STRAIN_ONE
+#    "li_expulsion_one": LI_EXPULSION_ONE,
+#    "li_expulsion_two": LI_EXPULSION_TWO,
+#    "si_lithiation_one": SI_LITHIATION_ONE, #only 5 frames
+#    "EDS_aerospace_one": EDS_AEROSPACE_ONE,
+#    "EDS_aerospace_two": EDS_AEROSPACE_TWO,
+#    "Titanium_strain": TITANIUM_STRAIN_ONE
 }
 
 GROUNDTRUTH_NAMES = list(GROUNDTRUTH_MAP.keys())
-SCANNED_PIXELS_PERCENTAGES = list(np.arange(0.5, 5.5, 0.5)) + [0.1, 7.0, 10.0, 20.0]
-ALPHAS = list(np.arange(0.4, 2, 0.4))
-TEMPORAL_SAMPLING_OPTIONS = [True, False]
-TEMPORAL_RECONSTRUCTION_OPTIONS = [True, False]
+SCANNED_PIXELS_PERCENTAGES = [2.0]#[2.0, 5.0, 10.0]#list(np.arange(0.5, 5.5, 0.5)) + [0.1, 7.0, 10.0, 20.0]
+ALPHAS = [0.5 for i in range(10)]#[0.5, 1.0, 2.0, 3.0, 5.0]#list(np.arange(0.5, 5.5, 0.5))
+TEMPORAL_SAMPLING_OPTIONS = [True]
+TEMPORAL_RECONSTRUCTION_OPTIONS = [True]
 
 numberOfFrames = 20
 output_dir = "plots"
 os.makedirs(output_dir, exist_ok=True)
 LOGFILE = "script_log.txt"
 CSV_PATH = os.path.join(output_dir, "per_frame_results.csv")
-STANDARD_WORKER_POOL_SIZE = 6
+STANDARD_WORKER_POOL_SIZE = 1
 PADIS_WORKER_POOL_SIZE = 1
 
 
@@ -73,8 +76,9 @@ def load_video(gt_name, num_frames):
 # --------------------
 # STADS wrapper
 # --------------------
-def run_sampler(gt_name, sparsity, sampler_type, has_temporal_sampler=True,has_temporal_reconstruction=True,alpha=None):
+def run_sampler(gt_name, scanned_pixel_percent, sampler_type, has_temporal_sampler=True, has_temporal_reconstruction=True, alpha=None):
     local_results = []
+    t_overall_start = time.perf_counter()
 
     log(f"Starting: {sampler_type} | {gt_name} | S={scanned_pixel_percent}% | SamplerTemporal={has_temporal_sampler}| ReconstructionTemporal={has_temporal_reconstruction} | alpha={alpha}")
     try:
@@ -100,15 +104,25 @@ def run_sampler(gt_name, sparsity, sampler_type, has_temporal_sampler=True,has_t
                 groundTruthName=gt_name,
             )
 
+        t_run_start = time.perf_counter()
         rec_video, PSNRs, SSIMs = sampler.run()
+        t_run_end = time.perf_counter()
+        log(f"[TIMING] sampler.run(): {t_run_end - t_run_start:.2f}s | {sampler_type} | {gt_name} | S={scanned_pixel_percent}% | alpha={alpha}")
 
         # Save figures
-        example_dir = os.path.join(output_dir, "examples", sampler_type, f"sparsity_{scanned_pixel_percent}", gt_name)
+        example_dir = os.path.join(output_dir, "examples", sampler_type, f"sparsity_{scanned_pixel_percent}", gt_name, f"sampler_{has_temporal_sampler}_reconstruction_{has_temporal_reconstruction}", f"alpha_{alpha}")
         os.makedirs(example_dir, exist_ok=True)
 
+        t_save_start = time.perf_counter()
+        failed_figures = False
         for frame_idx in range(trueNumberOfFrames):
-            pass
-            #sampler.save_figures(frameNumber=frame_idx, save_path=example_dir)
+            try:
+                sampler.save_figures(frameNumber=frame_idx, save_path=example_dir)
+            except Exception as e:
+                log(f"[ERROR] Failed to save figures for frame {frame_idx} | {gt_name} | {scanned_pixel_percent}% | {sampler_type} | {e}")
+                failed_figures = True
+        t_save_end = time.perf_counter()
+        log(f"[TIMING] save_figures loop: {t_save_end - t_save_start:.2f}s | {sampler_type} | {gt_name} | S={scanned_pixel_percent}% | alpha={alpha} | failed_figures={failed_figures}")
 
         # Collect results (LOCAL!)
         for frame_idx in range(trueNumberOfFrames):
@@ -129,6 +143,8 @@ def run_sampler(gt_name, sparsity, sampler_type, has_temporal_sampler=True,has_t
     except Exception as e:
         log(f"[ERROR] {sampler_type} | {gt_name} | S={scanned_pixel_percent}% | {e}\n{traceback.format_exc()}")
 
+    t_overall_end = time.perf_counter()
+    log(f"[TIMING] run_sampler() total: {t_overall_end - t_overall_start:.2f}s | {sampler_type} | {gt_name} | S={scanned_pixel_percent}% | alpha={alpha}")
     return local_results
 
 
@@ -142,7 +158,14 @@ class SamplerWorker(threading.Thread):
         while True:
             try:
                 gt_name, scanned_pixel_percent, sampler_type, has_temporal_sampler, has_temporal_reconstruction, alpha = self.task_queue.get(timeout=5)
-                result = run_sampler(gt_name, scanned_pixel_percent, sampler_type, has_temporal_sampler, has_temporal_reconstruction)
+                result = run_sampler(
+                    gt_name,
+                    scanned_pixel_percent,
+                    sampler_type,
+                    has_temporal_sampler,
+                    has_temporal_reconstruction,
+                    alpha,
+                )
                 if result:
                     self.result_queue.put(result)
                 else:
@@ -228,7 +251,7 @@ def run_padis(gt_name, scanned_pixel_percent):
         os.makedirs(example_dir, exist_ok=True)
 
         for frame_idx in range(T):
-            save_absolute_error_map(
+            save_error_map(
                 gt_video[frame_idx], rec_video[frame_idx],
                 savePlot=True,
                 savePath=os.path.join(example_dir, f"frame_{frame_idx:03d}_abs_error_map.tiff")
@@ -247,10 +270,11 @@ def run_padis(gt_name, scanned_pixel_percent):
                 "withTemporalSampler": False,
                 "withTemporalReconstruction": False,
                 "gt_name": gt_name,
-                "sparsity": scanned_pixel_percent,
+                "scanned_pixel_percent": scanned_pixel_percent,
                 "frame_idx": frame_idx,
                 "PSNR": psnrs[frame_idx],
-                "SSIM": ssims[frame_idx]
+                "SSIM": ssims[frame_idx],
+                "alpha": None
             })
 
         log(f"[DONE] PADIS-FSR | {gt_name} | S={scanned_pixel_percent}%")
@@ -260,11 +284,11 @@ def run_padis(gt_name, scanned_pixel_percent):
 
     return local_results
 
-
 # --------------------
 # Main
 # --------------------
 def main():
+    t_experiment_start = time.perf_counter()
     if os.path.exists(LOGFILE):
         os.remove(LOGFILE)
 
@@ -276,18 +300,19 @@ def main():
     result_queue = queue.Queue()
 
     # Stratified baseline
+    """
     for gt_name in GROUNDTRUTH_NAMES:
         for scanned_pixel_percent in SCANNED_PIXELS_PERCENTAGES:
-            task_queue.put((gt_name, scanned_pixel_percent, "stratified", None, None))
-
+            task_queue.put((gt_name, scanned_pixel_percent, "stratified", None, None, None))
+    """
     #experimental conditions: Main method: adaptive, with/without temporal sampler, with/without temporal reconstruction
     for gt_name in GROUNDTRUTH_NAMES:
-        for scanned_pixel_percent in SCANNED_PIXELS_PERCENTAGES:
-            task_queue.put((gt_name, scanned_pixel_percent, "adaptive", True, False))
-            task_queue.put((gt_name, scanned_pixel_percent, "adaptive", False, False))
-            for alpha in ALPHAS:
-                task_queue.put((gt_name, scanned_pixel_percent, "adaptive", True, True,alpha))
-                task_queue.put((gt_name, scanned_pixel_percent, "adaptive", False, True,alpha))
+        for use_temporal_sampler in TEMPORAL_SAMPLING_OPTIONS:
+            for use_temporal_reconstruction in TEMPORAL_RECONSTRUCTION_OPTIONS:
+                for scanned_pixel_percent in SCANNED_PIXELS_PERCENTAGES:
+                    for alpha in ALPHAS:
+                        task_queue.put((gt_name, scanned_pixel_percent, "adaptive", use_temporal_sampler, use_temporal_reconstruction, alpha))
+
     
     # PADIS-FSR 
     """
@@ -313,6 +338,8 @@ def main():
     output_worker.join()
     log("===== All Runs Completed =====")
     log(f"Saved per-frame results to {CSV_PATH}")
+    t_experiment_end = time.perf_counter()
+    log(f"[TIMING] Experiment total: {t_experiment_end - t_experiment_start:.2f}s using {STANDARD_WORKER_POOL_SIZE} sampler workers")
 
 if __name__ == "__main__":
     main()
