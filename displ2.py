@@ -148,35 +148,6 @@ def run_sampler(gt_name, scanned_pixel_percent, sampler_type, has_temporal_sampl
     return local_results
 
 
-class SamplerWorker(threading.Thread):
-    def __init__(self, task_queue, result_queue, group = None, target = None, name = None, args = ..., kwargs = None, *, daemon = None):
-        self.task_queue = task_queue
-        self.result_queue = result_queue
-        super().__init__(group, target, name, args, kwargs, daemon=daemon)
-
-    def run(self):
-        while True:
-            try:
-                gt_name, scanned_pixel_percent, sampler_type, has_temporal_sampler, has_temporal_reconstruction, alpha = self.task_queue.get(timeout=5)
-                result = run_sampler(
-                    gt_name,
-                    scanned_pixel_percent,
-                    sampler_type,
-                    has_temporal_sampler,
-                    has_temporal_reconstruction,
-                    alpha,
-                )
-                if result:
-                    self.result_queue.put(result)
-                else:
-                    log(f"[WORKER WARNING] No result for {gt_name} | {scanned_pixel_percent}% | {sampler_type}")
-                self.task_queue.task_done()
-            except queue.Empty:
-                break
-            except Exception as e:
-                log(f"[WORKER ERROR] {e}\n{traceback.format_exc()}")
-                self.task_queue.task_done()
-
 class PadisWorker(threading.Thread):
     def __init__(self, padis_queue, result_queue, group = None, target = None, name = None, args = ..., kwargs = None, *, daemon = None):
         self.padis_queue = padis_queue
@@ -295,44 +266,48 @@ def main():
     if os.path.exists(CSV_PATH):
         os.remove(CSV_PATH)
 
-    task_queue = queue.Queue()
     padis_queue = queue.Queue()
     result_queue = queue.Queue()
 
-    # Stratified baseline
-    """
-    for gt_name in GROUNDTRUTH_NAMES:
-        for scanned_pixel_percent in SCANNED_PIXELS_PERCENTAGES:
-            task_queue.put((gt_name, scanned_pixel_percent, "stratified", None, None, None))
-    """
-    #experimental conditions: Main method: adaptive, with/without temporal sampler, with/without temporal reconstruction
+    # Build sampler task list
+    sampler_tasks = []
     for gt_name in GROUNDTRUTH_NAMES:
         for use_temporal_sampler in TEMPORAL_SAMPLING_OPTIONS:
             for use_temporal_reconstruction in TEMPORAL_RECONSTRUCTION_OPTIONS:
                 for scanned_pixel_percent in SCANNED_PIXELS_PERCENTAGES:
                     for alpha in ALPHAS:
-                        task_queue.put((gt_name, scanned_pixel_percent, "adaptive", use_temporal_sampler, use_temporal_reconstruction, alpha))
+                        sampler_tasks.append((gt_name, scanned_pixel_percent, "adaptive", use_temporal_sampler, use_temporal_reconstruction, alpha))
 
-    
-    # PADIS-FSR 
+    # PADIS-FSR
     """
     for gt_name in groundTruthNames:
         for scanned_pixel_percent in scannedPixelsPercent:
             padis_queue.put((gt_name, scanned_pixel_percent))
     """
-    
 
-    standard_workers = [SamplerWorker(task_queue, result_queue) for _ in range(STANDARD_WORKER_POOL_SIZE)]
     padis_workers = [PadisWorker(padis_queue, result_queue) for _ in range(PADIS_WORKER_POOL_SIZE)]
-    task_workers = standard_workers + padis_workers
     output_worker = OutputWorker(result_queue)
 
     log("===== Starting Parallel Runs =====")
-    for w in task_workers:
+    for w in padis_workers:
         w.start()
     output_worker.start()
 
-    for w in task_workers:
+    # Sampler tasks run in separate processes (bypasses GIL for CPU-bound work).
+    with ProcessPoolExecutor(max_workers=STANDARD_WORKER_POOL_SIZE) as executor:
+        futures = {executor.submit(run_sampler, *task): task for task in sampler_tasks}
+        for future in concurrent.futures.as_completed(futures):
+            task = futures[future]
+            try:
+                result = future.result()
+                if result:
+                    result_queue.put(result)
+                else:
+                    log(f"[WORKER WARNING] No result for {task}")
+            except Exception as e:
+                log(f"[WORKER ERROR] {task} | {e}\n{traceback.format_exc()}")
+
+    for w in padis_workers:
         w.join()
     result_queue.put(None)  # Signal output worker to stop
     output_worker.join()
