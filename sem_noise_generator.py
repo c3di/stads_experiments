@@ -1,4 +1,5 @@
 import os
+import pickle
 
 import cv2
 import tifffile
@@ -95,14 +96,11 @@ def corr_tail_model(t, d, beta):
 
 class SEMNoiseModel:
 
-    def __init__(self, stats):
-
-        self.stats = stats
+    def __init__(self):
         self.model = None
 
-    def fit(self):
+    def fit(self,stats):
 
-        stats = self.stats
 
         ts = np.array(sorted(stats.keys()), dtype=np.float32)
         u = np.log(ts + EPS)
@@ -136,6 +134,14 @@ class SEMNoiseModel:
             "corr_tail":
                 corr_tail_params,
         }
+
+    def save_model(self,savePath):
+        with open(savePath, "wb") as f:
+            pickle.dump(self.model, f)
+
+    def load_model(self, loadPath):
+        with open(loadPath, "rb") as f:
+            self.model = pickle.load(f)
 
     def eval_model_at_t(self, t):
 
@@ -206,48 +212,14 @@ class SEMNoiseModel:
         return output
 
 
-    def visualize_empirical_noise(self):
+    def evaluate_generator(self, stacks):
 
-        stats = self.stats
-
-        ts = sorted(stats.keys())
-
-        for t in ts:
-            signal = stats[t]["signal"]
-
-            noise = stats[t]["noise"]
-
-            vmax = np.percentile(np.abs(noise), 99)
-            fig, axs = plt.subplots(1, 2, figsize=(12, 5))
-
-            # signal
-            im0 = axs[0].imshow(signal, cmap='gray')
-            axs[0].set_title(f"Signal Estimate\nDwell={t}")
-            axs[0].axis('off')
-            plt.colorbar(im0, ax=axs[0], fraction=0.046)
-
-            # noise
-            im1 = axs[1].imshow(noise, cmap='gray', vmin=-vmax, vmax=vmax)
-            axs[1].set_title(f"Residual Noise\nDwell={t}")
-            axs[1].axis('off')
-            plt.colorbar(im1, ax=axs[1], fraction=0.046)
-            plt.tight_layout()
-
-            plt.show()
-
-    # ========================================================
-    # evaluate generator
-    # ========================================================
-
-    def evaluate_generator(self, allTiffs):
-
-        stats = compute_stats(allTiffs)
-
+        stats = compute_stats(stacks)
         ts = np.array(sorted(stats.keys()))
 
         t_high = ts[-1]
 
-        base = estimate_signal(allTiffs[t_high])
+        base = estimate_signal(stacks[t_high])
 
         sigma_emp = []
         sigma_gen = []
