@@ -1,4 +1,6 @@
 import os
+import pickle
+
 import numpy as np
 import pandas as pd
 import concurrent.futures
@@ -66,13 +68,10 @@ def log(msg: str):
 
 
 # --------------------
-# Load noise model training set
+# Load noise model
 # --------------------
-noiseDataSet = SEMNoiseDataset('Noise_evaluation_dataset')
-empiricalStats = compute_stats(noiseDataSet.stacks)
-semNoiseModel = SEMNoiseModel(empiricalStats)
-semNoiseModel.fit()
-
+semNoiseModel = SEMNoiseModel()
+semNoiseModel.load_model("sem_noise_model.pkl")
 
 # --------------------
 # Load video
