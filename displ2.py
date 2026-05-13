@@ -8,13 +8,18 @@ import logging
 import traceback
 from datetime import datetime
 
-from src.stadsadaptivesampler.src.stads.stads import AdaptiveSampler
-from src.stadsadaptivesampler.src.stads.stratified_sampler import StratifiedSampler
-from src.stadsadaptivesampler.src.stads.monitor import save_absolute_error_map, save_pixel_wise_psnr_plots
-from src.stadsadaptivesampler.src.stads.config import HYDRATION_ONE, LI_EXPULSION_ONE, LI_EXPULSION_TWO, SI_LITHIATION_ONE, EDS_AEROSPACE_ONE, EDS_AEROSPACE_TWO, TITANIUM_STRAIN_ONE
+from tifffile import tifffile
+
+from src.stads_adaptive_sampler.src.stads.evaluation import calculate_psnr, calculate_ssim
+from src.stads_adaptive_sampler.src.stads.stads import AdaptiveSampler
+from src.stads_adaptive_sampler.src.stads.stratified_sampler import StratifiedSampler
+from src.stads_adaptive_sampler.src.stads.monitor import save_pixel_wise_psnr_plots,save_error_map
+from src.stads_adaptive_sampler.src.stads.config import HYDRATION_ONE, LI_EXPULSION_ONE, LI_EXPULSION_TWO, SI_LITHIATION_ONE, EDS_AEROSPACE_ONE, EDS_AEROSPACE_TWO, TITANIUM_STRAIN_ONE
 
 import padis_fsr
 from padis_fsr import generate_mask_for_frame, run_padis_fsr_video_with_masks
+from noise_data_preparation import SEMNoiseDataset
+from sem_noise_generator import compute_stats, SEMNoiseModel
 
 logging.basicConfig(level=logging.INFO)
 
@@ -22,13 +27,13 @@ logging.basicConfig(level=logging.INFO)
 # CONFIG
 # --------------------
 GROUNDTRUTH_MAP = {
-    "hydration_one": HYDRATION_ONE,
-    "li_expulsion_one": LI_EXPULSION_ONE,
-    "li_expulsion_two": LI_EXPULSION_TWO,
-    "si_lithiation_one": SI_LITHIATION_ONE,
-    "eds_aerospace_one": EDS_AEROSPACE_ONE,
-    "eds_aerospace_two": EDS_AEROSPACE_TWO,
-    "titanium_strain_one": TITANIUM_STRAIN_ONE
+    "hydration_one": (HYDRATION_ONE,25000),
+    "li_expulsion_one": (LI_EXPULSION_ONE,20000),
+    "li_expulsion_two": (LI_EXPULSION_TWO,20000),
+    "si_lithiation_one": (SI_LITHIATION_ONE,20000),
+    "eds_aerospace_one": (EDS_AEROSPACE_ONE,20000),
+    "eds_aerospace_two": (EDS_AEROSPACE_TWO,20000),
+    "titanium_strain_one": (TITANIUM_STRAIN_ONE,20000)
 }
 
 GROUNDTRUTH_NAMES = list(GROUNDTRUTH_MAP.keys())
@@ -61,14 +66,109 @@ def log(msg: str):
 
 
 # --------------------
+# Load noise model training set
+# --------------------
+noiseDataSet = SEMNoiseDataset('Noise_evaluation_dataset')
+empiricalStats = compute_stats(noiseDataSet.stacks)
+semNoiseModel = SEMNoiseModel(empiricalStats)
+semNoiseModel.fit()
+
+
+# --------------------
 # Load video
 # --------------------
-def load_video(gt_name, num_frames):
-    video = GROUNDTRUTH_MAP[gt_name][:num_frames]
+def load_video(gt_name, num_frames, scanned_pixel_percent=None):
+    video, dwellTime = GROUNDTRUTH_MAP[gt_name]
+
+    video = video[:num_frames]
+
     if video.ndim == 4 and video.shape[-1] == 1:
         video = video.squeeze(-1)
+
+    if scanned_pixel_percent is not None:
+        t_high = dwellTime
+        t_target = (scanned_pixel_percent / 100.0) * t_high
+
+        noisy_video = []
+        for frame in video:
+            noisy_frame = semNoiseModel.generate_low_dwell_time_image(frame,t_high=t_high,t_target=t_target)
+            noisy_video.append(noisy_frame)
+        video = np.array(noisy_video)
     return video
 
+
+def run_low_dwell_time_sampler(gt_name, scanned_pixel_percent):
+
+    local_results = []
+
+    log(
+        f"Starting: LOW-DWELL | "
+        f"{gt_name} | "
+        f"S={scanned_pixel_percent}%"
+    )
+
+    try:
+
+        gt_video = load_video(gt_name, numberOfFrames)
+        _, t_high = GROUNDTRUTH_MAP[gt_name]
+        s = scanned_pixel_percent / 100.0
+        t_target = s * t_high
+        rec_video = []
+
+        PSNRs = []
+        SSIMs = []
+        # Save figures
+        example_dir = os.path.join(output_dir, "examples", "low_dwell", f"sparsity_{scanned_pixel_percent}", gt_name)
+        os.makedirs(example_dir, exist_ok=True)
+
+        for i,frame in enumerate(gt_video):
+
+            noisy_frame = semNoiseModel.generate_low_dwell_time_image(frame,t_high=t_high,t_target=t_target)
+            rec_video.append(noisy_frame)
+
+            psnr = calculate_psnr(frame, noisy_frame)
+            ssim = calculate_ssim(noisy_frame,frame)
+            PSNRs.append(psnr)
+            SSIMs.append(ssim)
+            tifffile.imwrite(os.path.join(example_dir,f"frame_{i:03d}_low_dwell.tiff"),noisy_frame)
+            save_error_map(frame,noisy_frame,savePlot=True,savePath=os.path.join(example_dir,
+                    f"frame_{i:03d}_abs_error_map.tiff"))
+            save_pixel_wise_psnr_plots(frame,noisy_frame,savePlot=True,savePath=os.path.join(example_dir
+                    ,f"frame_{i:03d}_pixelwise_psnr.tiff"))
+
+        rec_video = np.array(rec_video)
+        T = rec_video.shape[0]
+
+        for frame_idx in range(T):
+
+            local_results.append({
+                "sampler": "low_dwell",
+                "withTemporalSampler": None,
+                "withTemporalReconstruction": None,
+                "gt_name": gt_name,
+                "scanned_pixel_percent": scanned_pixel_percent,
+                "frame_idx": frame_idx,
+                "PSNR": PSNRs[frame_idx],
+                "SSIM": SSIMs[frame_idx],
+                "alpha": None
+            })
+
+        log(
+            f"[DONE] LOW-DWELL | "
+            f"{gt_name} | "
+            f"S={scanned_pixel_percent}%"
+        )
+
+    except Exception as e:
+
+        log(
+            f"[ERROR] LOW-DWELL | "
+            f"{gt_name} | "
+            f"S={scanned_pixel_percent}% | "
+            f"{e}\n{traceback.format_exc()}"
+        )
+
+    return local_results
 
 # --------------------
 # STADS wrapper
@@ -78,7 +178,7 @@ def run_sampler(gt_name, sparsity, sampler_type, has_temporal_sampler=True,has_t
 
     log(f"Starting: {sampler_type} | {gt_name} | S={scanned_pixel_percent}% | SamplerTemporal={has_temporal_sampler}| ReconstructionTemporal={has_temporal_reconstruction} | alpha={alpha}")
     try:
-        gt_video = load_video(gt_name,numberOfFrames)
+        gt_video = load_video(gt_name,numberOfFrames,100.0)
         trueNumberOfFrames = min(gt_video.shape[0],numberOfFrames)
 
         if sampler_type == "adaptive":
@@ -176,6 +276,39 @@ class PadisWorker(threading.Thread):
                 log(f"[PADIS WORKER ERROR] {e}\n{traceback.format_exc()}")
                 self.padis_queue.task_done()
 
+
+class LowDwellWorker(threading.Thread):
+
+    def __init__(self,low_dwell_queue,result_queue,group=None,target=None,name=None, args=..., kwargs=None, *, daemon=None):
+
+        self.low_dwell_queue = low_dwell_queue
+        self.result_queue = result_queue
+        super().__init__(group,target,name,args,kwargs,daemon=daemon)
+
+    def run(self):
+
+        while True:
+
+            try:
+                gt_name, scanned_pixel_percent = self.low_dwell_queue.get(timeout=5)
+                result = run_low_dwell_time_sampler(gt_name,scanned_pixel_percent)
+
+                if result:
+                    self.result_queue.put(result)
+
+                else:
+                    log(f"[LOW DWELL WARNING] No result for {gt_name} | {scanned_pixel_percent}%")
+                self.low_dwell_queue.task_done()
+
+            except queue.Empty:
+                break
+
+            except Exception as e:
+
+                log(f"[LOW DWELL ERROR] {e}\n{traceback.format_exc()}")
+                self.low_dwell_queue.task_done()
+
+
 class OutputWorker(threading.Thread):
     def __init__(self, result_queue, group = None, target = None, name = None, args = ..., kwargs = None, *, daemon = None):
         self.result_queue = result_queue
@@ -228,7 +361,7 @@ def run_padis(gt_name, scanned_pixel_percent):
         os.makedirs(example_dir, exist_ok=True)
 
         for frame_idx in range(T):
-            save_absolute_error_map(
+            save_error_map(
                 gt_video[frame_idx], rec_video[frame_idx],
                 savePlot=True,
                 savePath=os.path.join(example_dir, f"frame_{frame_idx:03d}_abs_error_map.tiff")
@@ -272,6 +405,7 @@ def main():
         os.remove(CSV_PATH)
 
     task_queue = queue.Queue()
+    low_dwell_queue = queue.Queue()
     padis_queue = queue.Queue()
     result_queue = queue.Queue()
 
@@ -288,6 +422,11 @@ def main():
             for alpha in ALPHAS:
                 task_queue.put((gt_name, scanned_pixel_percent, "adaptive", True, True,alpha))
                 task_queue.put((gt_name, scanned_pixel_percent, "adaptive", False, True,alpha))
+
+    for gt_name in GROUNDTRUTH_NAMES:
+
+        for scanned_pixel_percent in SCANNED_PIXELS_PERCENTAGES:
+            low_dwell_queue.put((gt_name,scanned_pixel_percent))
     
     # PADIS-FSR 
     """
