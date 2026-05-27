@@ -25,27 +25,27 @@ logging.basicConfig(level=logging.INFO)
 # CONFIG
 # --------------------
 GROUNDTRUTH_MAP = {
-#    "hydration_one": HYDRATION_ONE,
+    #"hydration_one": HYDRATION_ONE,
 #    "li_expulsion_one": LI_EXPULSION_ONE,
 #    "li_expulsion_two": LI_EXPULSION_TWO,
 #    "si_lithiation_one": SI_LITHIATION_ONE, #only 5 frames
 #    "EDS_aerospace_one": EDS_AEROSPACE_ONE,
-#    "EDS_aerospace_two": EDS_AEROSPACE_TWO,
-    "Titanium_strain": TITANIUM_STRAIN_ONE
+    "EDS_aerospace_two": EDS_AEROSPACE_TWO,
+#    "Titanium_strain": TITANIUM_STRAIN_ONE #too much noise, not suitable for this experiment at high sparsity levels
 }
 
 GROUNDTRUTH_NAMES = list(GROUNDTRUTH_MAP.keys())
-SCANNED_PIXELS_PERCENTAGES = [2.0, 5.0]#list(np.arange(0.5, 5.5, 0.5)) + [0.1, 7.0, 10.0, 20.0]
-ALPHAS = [1.0,  3.0, 5.0, 7.0]#list(np.arange(0.5, 5.5, 0.5))
+SCANNED_PIXELS_PERCENTAGES = [0.5, 2.0, 5.0]#list(np.arange(0.5, 5.5, 0.5)) + [0.1, 7.0, 10.0, 20.0]
+ALPHAS = [0.5, 3.0, 5.0]#list(np.arange(0.5, 5.5, 0.5))
 TEMPORAL_SAMPLING_OPTIONS = [True]
-TEMPORAL_RECONSTRUCTION_OPTIONS = [True]
+TEMPORAL_RECONSTRUCTION_OPTIONS = [True,False]
 
 numberOfFrames = 20
 output_dir = "plots"
 os.makedirs(output_dir, exist_ok=True)
 LOGFILE = "script_log.txt"
 CSV_PATH = os.path.join(output_dir, "per_frame_results.csv")
-STANDARD_WORKER_POOL_SIZE = 10
+STANDARD_WORKER_POOL_SIZE = 6 #6 probably best value for asr-ws-murdock
 PADIS_WORKER_POOL_SIZE = 1
 
 
@@ -260,12 +260,13 @@ def run_padis(gt_name, scanned_pixel_percent):
 # --------------------
 def main():
     t_experiment_start = time.perf_counter()
+    """
     if os.path.exists(LOGFILE):
         os.remove(LOGFILE)
 
     if os.path.exists(CSV_PATH):
         os.remove(CSV_PATH)
-
+    """
     padis_queue = queue.Queue()
     result_queue = queue.Queue()
 
@@ -275,8 +276,11 @@ def main():
         for use_temporal_sampler in TEMPORAL_SAMPLING_OPTIONS:
             for use_temporal_reconstruction in TEMPORAL_RECONSTRUCTION_OPTIONS:
                 for scanned_pixel_percent in SCANNED_PIXELS_PERCENTAGES:
-                    for alpha in ALPHAS:
-                        sampler_tasks.append((gt_name, scanned_pixel_percent, "adaptive", use_temporal_sampler, use_temporal_reconstruction, alpha))
+                    if use_temporal_reconstruction:
+                        for alpha in ALPHAS:
+                            sampler_tasks.append((gt_name, scanned_pixel_percent, "adaptive", use_temporal_sampler, use_temporal_reconstruction, alpha))
+                    else:
+                        sampler_tasks.append((gt_name, scanned_pixel_percent, "adaptive", use_temporal_sampler, use_temporal_reconstruction, 1.0)) # alpha is irrelevant when temporal reconstruction is disabled
 
     # PADIS-FSR
     """
