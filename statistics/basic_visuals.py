@@ -18,10 +18,13 @@ def _format_group_label(
 	ts_enabled = ts_value.lower() == "true"
 	tr_enabled = tr_value.lower() == "true"
 
+	if sampler_lower == "low_dwell":
+		return "baseline"
+
 	if sampler_lower == "adaptive" and ts_enabled and tr_enabled:
-		return "Full"
+		return "spatiotemporal"
 	if sampler_lower == "stratified" and not ts_enabled and not tr_enabled:
-		return "Baseline"
+		return "stratified"
 	
 	if sampler_lower == "adaptive" and not ts_enabled and not tr_enabled:
 		return "No Temporal Sampling/Reconstruction"
@@ -40,22 +43,102 @@ def _build_group_palette(group_labels: list[str]) -> dict[str, tuple[float, floa
 	labels = [str(label) for label in group_labels]
 	palette: dict[str, tuple[float, float, float] | str] = {}
 
-	# Keep Baseline visually distinct while other groups stay in a similar spectrum.
-	if "Baseline" in labels:
-		palette["Baseline"] = "#d62728"
+	# Keep the key reference groups visually distinct while other groups stay in a similar spectrum.
+	if "stratified" in labels:
+		palette["stratified"] = "#d62728"
+	if "baseline" in labels:
+		palette["baseline"] = "#2ca02c"
 
-	non_baseline_labels = [label for label in labels if label != "Baseline"]
-	if non_baseline_labels:
-		close_colors = sns.color_palette("Blues", n_colors=len(non_baseline_labels) + 2)[2:]
-		for label, color in zip(non_baseline_labels, close_colors):
+	accent_labels = {"stratified", "baseline"}
+	non_accent_labels = [label for label in labels if label not in accent_labels]
+	if non_accent_labels:
+		close_colors = sns.color_palette("Blues", n_colors=len(non_accent_labels) + 2)[2:]
+		for label, color in zip(non_accent_labels, close_colors):
 			palette[label] = color
 
 	return palette
 
 
+def _filter_temporal_reconstruction_by_alpha(df: pd.DataFrame, selected_alpha: float) -> pd.DataFrame:
+	if "alpha" not in df.columns:
+		return df
+
+	tr_mask = df["withTemporalReconstruction"].str.lower().eq("true")
+	if not tr_mask.any():
+		return df
+
+	df = df.copy()
+	df["alpha"] = pd.to_numeric(df["alpha"], errors="coerce")
+	tolerance = 1e-12
+	alpha_match = df["alpha"].sub(float(selected_alpha)).abs().le(tolerance)
+	filtered_df = df.loc[~tr_mask | alpha_match].copy()
+
+	filtered_tr_mask = filtered_df["withTemporalReconstruction"].str.lower().eq("true")
+	if not filtered_tr_mask.any():
+		available_alphas = sorted(df.loc[tr_mask, "alpha"].dropna().unique().tolist())
+		raise ValueError(
+			f"No temporal reconstruction rows found for alpha={selected_alpha}. "
+			f"Available alpha values: {available_alphas}"
+		)
+
+	return filtered_df
+
+
+def _filter_groups(df: pd.DataFrame, include_groups: list[str] | None) -> pd.DataFrame:
+	if not include_groups:
+		return df
+
+	wanted_groups = {
+		str(group).strip().lower()
+		for group in include_groups
+		if str(group).strip()
+	}
+	if not wanted_groups:
+		return df
+
+	group_labels = df["group_label"].astype(str).str.strip().str.lower()
+	filtered_df = df.loc[group_labels.isin(wanted_groups)].copy()
+	if filtered_df.empty:
+		available_groups = sorted(df["group_label"].dropna().astype(str).str.strip().unique().tolist())
+		raise ValueError(
+			f"No rows matched include_groups={sorted(wanted_groups)}. "
+			f"Available groups: {available_groups}"
+		)
+
+	return filtered_df
+
+def _filter_scanned_pixel_percent_range(
+	df: pd.DataFrame,
+	scanned_pixel_percent_range: tuple[float, float] | list[float] | None,
+) -> pd.DataFrame:
+	if not scanned_pixel_percent_range:
+		return df
+
+	if len(scanned_pixel_percent_range) != 2:
+		raise ValueError("scanned_pixel_percent_range must contain exactly two values.")
+
+	lower_bound = float(scanned_pixel_percent_range[0])
+	upper_bound = float(scanned_pixel_percent_range[1])
+	if lower_bound > upper_bound:
+		lower_bound, upper_bound = upper_bound, lower_bound
+
+	filtered_df = df.loc[df["scanned_pixel_percent"].between(lower_bound, upper_bound, inclusive="both")].copy()
+	if filtered_df.empty:
+		available_values = sorted(df["scanned_pixel_percent"].dropna().unique().tolist())
+		raise ValueError(
+			f"No rows matched scanned_pixel_percent_range=({lower_bound}, {upper_bound}). "
+			f"Available scanned_pixel_percent values: {available_values}"
+		)
+
+	return filtered_df
+
+
 def generate_framewise_line_plots(
 	csv_path: str | Path = "plots/per_frame_results.csv",
 	output_dir: str | Path = "plots/statistics",
+	selected_alpha: float = 2.0,
+	include_groups: list[str] | None = None,
+	scanned_pixel_percent_range: tuple[float, float] | list[float] | None = None,
 ) -> None:
 	csv_path = Path(csv_path)
 	output_dir = Path(output_dir)
@@ -68,10 +151,12 @@ def generate_framewise_line_plots(
 	df["scanned_pixel_percent"] = pd.to_numeric(df["scanned_pixel_percent"], errors="coerce")
 	df["withTemporalSampler"] = df["withTemporalSampler"].fillna("False").astype(str).str.strip()
 	df.loc[df["withTemporalSampler"].eq(""), "withTemporalSampler"] = "False"
-	df = df.dropna(subset=["frame_idx", "scanned_pixel_percent", "PSNR", "SSIM"])
 	df["withTemporalReconstruction"] = df["withTemporalReconstruction"].fillna("False").astype(str).str.strip()
 	df.loc[df["withTemporalReconstruction"].eq(""), "withTemporalReconstruction"] = "False"
 	df["sampler"] = df["sampler"].astype(str)
+	df = _filter_scanned_pixel_percent_range(df, scanned_pixel_percent_range)
+	df = df.dropna(subset=["frame_idx", "scanned_pixel_percent", "PSNR", "SSIM"])
+	df = _filter_temporal_reconstruction_by_alpha(df, selected_alpha)
 
 	df["frame_idx"] = df["frame_idx"].astype(int)
 
@@ -87,6 +172,7 @@ def generate_framewise_line_plots(
 			axis=1,
 		)
 	)
+	df = _filter_groups(df, include_groups)
 
 	for scanned_pixel_percent, gt_df in df.groupby("scanned_pixel_percent", sort=True):
 		gt_df = gt_df.sort_values(["gt_name", "group_label", "frame_idx"])
@@ -117,7 +203,7 @@ def generate_framewise_line_plots(
 			else:
 				plt.ylim(bottom=0)
 			plt.legend(
-				title="scanned_pixel_percent / group_label",
+				title="ground truth / method",
 				bbox_to_anchor=(1.02, 1),
 				loc="upper left",
 				borderaxespad=0,
@@ -132,6 +218,9 @@ def generate_framewise_line_plots(
 def generate_averaged_metric_vs_scanned_pixel_plots(
 	csv_path: str | Path = "plots/per_frame_results.csv",
 	output_dir: str | Path = "plots/statistics",
+	selected_alpha: float = 2.0,
+	include_groups: list[str] | None = None,
+	scanned_pixel_percent_range: tuple[float, float] | list[float] | None = None,
 ) -> None:
 	csv_path = Path(csv_path)
 	output_dir = Path(output_dir)
@@ -148,6 +237,8 @@ def generate_averaged_metric_vs_scanned_pixel_plots(
 	df.loc[df["withTemporalSampler"].eq(""), "withTemporalSampler"] = "False"
 	df["withTemporalReconstruction"] = df["withTemporalReconstruction"].fillna("False").astype(str).str.strip()
 	df.loc[df["withTemporalReconstruction"].eq(""), "withTemporalReconstruction"] = "False"
+	df = _filter_scanned_pixel_percent_range(df, scanned_pixel_percent_range)
+	df = _filter_temporal_reconstruction_by_alpha(df, selected_alpha)
 	df = df.dropna(
 		subset=[
 			"gt_name",
@@ -177,6 +268,7 @@ def generate_averaged_metric_vs_scanned_pixel_plots(
 			axis=1,
 		)
 	)
+	aggregated_df = _filter_groups(aggregated_df, include_groups)
 	group_order = sorted(aggregated_df["group_label"].dropna().unique().tolist())
 	group_palette = _build_group_palette(group_order)
 
@@ -208,7 +300,7 @@ def generate_averaged_metric_vs_scanned_pixel_plots(
 			else:
 				plt.ylim(bottom=0)
 			plt.legend(
-				title="sampler | TS | TR",
+				title="method",
 				bbox_to_anchor=(1.02, 1),
 				loc="upper left",
 				borderaxespad=0,
@@ -221,5 +313,16 @@ def generate_averaged_metric_vs_scanned_pixel_plots(
 
 
 if __name__ == "__main__":
-	generate_averaged_metric_vs_scanned_pixel_plots()
-	generate_framewise_line_plots()
+	selected_alpha = 2.0  # Example: 2.0
+	include_groups = ['baseline', 'stratified', 'spatiotemporal']  # Example: ["baseline", "spatiotemporal"]
+	scanned_pixel_percent_range = (0.1, 10.0)  # Example: (2.0, 10.0)
+	generate_averaged_metric_vs_scanned_pixel_plots(
+		selected_alpha=selected_alpha,
+		include_groups=include_groups,
+		scanned_pixel_percent_range=scanned_pixel_percent_range,
+	)
+	generate_framewise_line_plots(
+		selected_alpha=selected_alpha,
+		include_groups=include_groups,
+		scanned_pixel_percent_range=scanned_pixel_percent_range,
+	)
