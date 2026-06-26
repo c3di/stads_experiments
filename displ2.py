@@ -36,17 +36,17 @@ GROUNDTRUTH_MAP = {
     "hydration_one": (HYDRATION_ONE,25000),
     "li_expulsion_one": (LI_EXPULSION_ONE,20000),
     "li_expulsion_two": (LI_EXPULSION_TWO,20000),
-    "si_lithiation_one": (SI_LITHIATION_ONE,20000),
+    #"si_lithiation_one": (SI_LITHIATION_ONE,20000),
     "eds_aerospace_one": (EDS_AEROSPACE_ONE,20000),
     "eds_aerospace_two": (EDS_AEROSPACE_TWO,20000),
     "titanium_strain_one": (TITANIUM_STRAIN_ONE,20000)
 }
 
 GROUNDTRUTH_NAMES = list(GROUNDTRUTH_MAP.keys())
-SCANNED_PIXELS_PERCENTAGES = [0.5, 2.0, 5.0]#list(np.arange(0.5, 5.5, 0.5)) + [0.1, 7.0, 10.0, 20.0]
-ALPHAS = [0.5, 3.0, 5.0]#list(np.arange(0.5, 5.5, 0.5))
-TEMPORAL_SAMPLING_OPTIONS = [True]
-TEMPORAL_RECONSTRUCTION_OPTIONS = [True,False]
+SCANNED_PIXELS_PERCENTAGES = [0.5, 2.0, 3.0, 5.0, 7.0, 10.0, 20.0]#list(np.arange(0.5, 5.5, 0.5)) + [0.1, 7.0, 10.0, 20.0]
+ALPHAS = [0.25,0.5, 1.0, 2.0, 4.0]#list(np.arange(0.5, 5.5, 0.5))
+TEMPORAL_SAMPLING_OPTIONS = [True, False]
+TEMPORAL_RECONSTRUCTION_OPTIONS = [True, False]
 
 numberOfFrames = 20
 output_dir = "plots"
@@ -81,7 +81,7 @@ semNoiseModel.load_model("sem_noise_model.pkl")
 # Load video
 # --------------------
 def load_video(gt_name, num_frames, scanned_pixel_percent=None):
-    video, dwellTime = GROUNDTRUTH_MAP[gt_name]
+    video, total_dwell_time = GROUNDTRUTH_MAP[gt_name]
 
     video = video[:num_frames]
 
@@ -89,7 +89,7 @@ def load_video(gt_name, num_frames, scanned_pixel_percent=None):
         video = video.squeeze(-1)
 
     if scanned_pixel_percent is not None:
-        t_high = dwellTime
+        t_high = total_dwell_time
         t_target = (scanned_pixel_percent / 100.0) * t_high
 
         noisy_video = []
@@ -408,6 +408,7 @@ def main():
     # Build sampler task list
     #experimental conditions: Main method: adaptive, with/without temporal sampler, with/without temporal reconstruction
     sampler_tasks = []
+    
     for gt_name in GROUNDTRUTH_NAMES:
         for use_temporal_sampler in TEMPORAL_SAMPLING_OPTIONS:
             for use_temporal_reconstruction in TEMPORAL_RECONSTRUCTION_OPTIONS:
@@ -417,13 +418,19 @@ def main():
                             sampler_tasks.append((gt_name, scanned_pixel_percent, "adaptive", use_temporal_sampler, use_temporal_reconstruction, alpha))
                     else:
                         sampler_tasks.append((gt_name, scanned_pixel_percent, "adaptive", use_temporal_sampler, use_temporal_reconstruction, 1.0)) # alpha is irrelevant when temporal reconstruction is disabled
-
-    """ 
-    ADD BASELINE LATER
+    
+    
+    # Add stratified sampler tasks (no temporal options, no alpha)
+    for gt_name in GROUNDTRUTH_NAMES:
+        for scanned_pixel_percent in SCANNED_PIXELS_PERCENTAGES:
+            sampler_tasks.append((gt_name, scanned_pixel_percent, "stratified", False, False, None))
+    
+    # Add low dwell time sampler tasks as baseline
+    
     for gt_name in GROUNDTRUTH_NAMES:
         for scanned_pixel_percent in SCANNED_PIXELS_PERCENTAGES:
             low_dwell_queue.put((gt_name,scanned_pixel_percent))
-
+    """
     for gt_name in groundTruthNames:
         for scanned_pixel_percent in scannedPixelsPercent:
             padis_queue.put((gt_name, scanned_pixel_percent))
@@ -450,6 +457,27 @@ def main():
                     log(f"[WORKER WARNING] No result for {task}")
             except Exception as e:
                 log(f"[WORKER ERROR] {task} | {e}\n{traceback.format_exc()}")
+
+    # Low-dwell tasks run in separate processes using the same completion handling.
+    low_dwell_tasks = []
+    while True:
+        try:
+            low_dwell_tasks.append(low_dwell_queue.get_nowait())
+        except queue.Empty:
+            break
+
+    with ProcessPoolExecutor(max_workers=STANDARD_WORKER_POOL_SIZE) as executor:
+        futures = {executor.submit(run_low_dwell_time_sampler, *task): task for task in low_dwell_tasks}
+        for future in concurrent.futures.as_completed(futures):
+            task = futures[future]
+            try:
+                result = future.result()
+                if result:
+                    result_queue.put(result)
+                else:
+                    log(f"[LOW DWELL WARNING] No result for {task}")
+            except Exception as e:
+                log(f"[LOW DWELL ERROR] {task} | {e}\n{traceback.format_exc()}")
 
     for w in padis_workers:
         w.join()
