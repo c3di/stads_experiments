@@ -37,19 +37,23 @@ GROUNDTRUTH_MAP = {
     "li_expulsion_one": (LI_EXPULSION_ONE,20000),
     "li_expulsion_two": (LI_EXPULSION_TWO,20000),
     #"si_lithiation_one": (SI_LITHIATION_ONE,20000),
-    "eds_aerospace_one": (EDS_AEROSPACE_ONE,20000),
-    "eds_aerospace_two": (EDS_AEROSPACE_TWO,20000),
-    "titanium_strain_one": (TITANIUM_STRAIN_ONE,20000)
+    "EDS_aerospace_one": (EDS_AEROSPACE_ONE,20000),
+    #"eds_aerospace_two": (EDS_AEROSPACE_TWO,20000),
+    "Titanium_strain": (TITANIUM_STRAIN_ONE,20000)
 }
 
 GROUNDTRUTH_NAMES = list(GROUNDTRUTH_MAP.keys())
-SCANNED_PIXELS_PERCENTAGES = [0.5, 2.0, 3.0, 5.0, 7.0, 10.0, 20.0]#list(np.arange(0.5, 5.5, 0.5)) + [0.1, 7.0, 10.0, 20.0]
-ALPHAS = [0.25,0.5, 1.0, 2.0, 4.0]#list(np.arange(0.5, 5.5, 0.5))
+SCANNED_PIXELS_PERCENTAGES = [0.5, 2.0, 5.0, 7.0]#list(np.arange(0.5, 5.5, 0.5)) + [0.1, 7.0, 10.0, 20.0]
+ALPHAS = [0.5, 1.0, 2.0, 4.0] #[0.25,0.5, 1.0, 2.0, 4.0]#list(np.arange(0.5, 5.5, 0.5))
+HORIZON = 3 # number of frames to look ahead for offline reconstruction
 TEMPORAL_SAMPLING_OPTIONS = [True, False]
 TEMPORAL_RECONSTRUCTION_OPTIONS = [True, False]
+RUN_WITH_OFFLINE = True
 
 numberOfFrames = 20
 output_dir = "plots"
+if RUN_WITH_OFFLINE:
+    output_dir += "_offline"
 os.makedirs(output_dir, exist_ok=True)
 LOGFILE = "script_log.txt"
 CSV_PATH = os.path.join(output_dir, "per_frame_results.csv")
@@ -175,7 +179,7 @@ def run_low_dwell_time_sampler(gt_name, scanned_pixel_percent):
 # --------------------
 # STADS wrapper
 # --------------------
-def run_sampler(gt_name, scanned_pixel_percent, sampler_type, has_temporal_sampler=True, has_temporal_reconstruction=True, alpha=None):
+def run_sampler(gt_name, scanned_pixel_percent, sampler_type, has_temporal_sampler=True, has_temporal_reconstruction=True, alpha=None, run_with_offline=RUN_WITH_OFFLINE, horizon=None):
     local_results = []
     t_overall_start = time.perf_counter()
 
@@ -204,7 +208,10 @@ def run_sampler(gt_name, scanned_pixel_percent, sampler_type, has_temporal_sampl
             )
 
         t_run_start = time.perf_counter()
-        rec_video, PSNRs, SSIMs = sampler.run()
+        if run_with_offline:
+            rec_video, PSNRs, SSIMs = sampler.run_offline(alphaPast=alpha, alphaFuture=alpha, horizon=horizon)
+        else:
+            rec_video, PSNRs, SSIMs = sampler.run()
         t_run_end = time.perf_counter()
         log(f"[TIMING] sampler.run(): {t_run_end - t_run_start:.2f}s | {sampler_type} | {gt_name} | S={scanned_pixel_percent}% | alpha={alpha}")
 
@@ -216,7 +223,10 @@ def run_sampler(gt_name, scanned_pixel_percent, sampler_type, has_temporal_sampl
         failed_figures = False
         for frame_idx in range(trueNumberOfFrames):
             try:
-                sampler.save_figures(frameNumber=frame_idx, save_path=example_dir)
+                if run_with_offline:
+                    sampler.save_offline_figures(frameNumber=frame_idx, save_path=example_dir)
+                else:
+                    sampler.save_figures(frameNumber=frame_idx, save_path=example_dir)
             except Exception as e:
                 log(f"[ERROR] Failed to save figures for frame {frame_idx} | {gt_name} | {scanned_pixel_percent}% | {sampler_type} | {e}")
                 failed_figures = True
@@ -234,7 +244,10 @@ def run_sampler(gt_name, scanned_pixel_percent, sampler_type, has_temporal_sampl
                 "frame_idx": frame_idx,
                 "PSNR": PSNRs[frame_idx],
                 "SSIM": SSIMs[frame_idx],
-                "alpha": alpha if (sampler_type == "adaptive" and has_temporal_reconstruction) else None
+                "alpha": alpha if (sampler_type == "adaptive" and has_temporal_reconstruction) else None,
+                "beta": alpha if (sampler_type == "adaptive" and has_temporal_reconstruction) else None,
+                "bidirectional": run_with_offline if sampler_type == "adaptive" else None,
+                "horizon": horizon if (sampler_type == "adaptive" and has_temporal_reconstruction and run_with_offline) else None
             })
 
         log(f"[DONE] {sampler_type} | {gt_name} | S={scanned_pixel_percent}%")
@@ -305,7 +318,7 @@ class LowDwellWorker(threading.Thread):
 class OutputWorker(threading.Thread):
     def __init__(self, result_queue, group = None, target = None, name = None, args = ..., kwargs = None, *, daemon = None):
         self.result_queue = result_queue
-        self.fieldnames = ["sampler", "withTemporalSampler", "withTemporalReconstruction", "gt_name", "scanned_pixel_percent", "frame_idx", "PSNR", "SSIM", "alpha"]
+        self.fieldnames = ["sampler", "withTemporalSampler", "withTemporalReconstruction", "gt_name", "scanned_pixel_percent", "frame_idx", "PSNR", "SSIM", "alpha", "beta", "bidirectional", "horizon"]
         self.csv_path = os.path.join(output_dir, "per_frame_results.csv")
 
         super().__init__(group, target, name, args, kwargs, daemon=daemon)
@@ -421,6 +434,7 @@ def main():
     
     
     # Add stratified sampler tasks (no temporal options, no alpha)
+    '''
     for gt_name in GROUNDTRUTH_NAMES:
         for scanned_pixel_percent in SCANNED_PIXELS_PERCENTAGES:
             sampler_tasks.append((gt_name, scanned_pixel_percent, "stratified", False, False, None))
@@ -430,6 +444,8 @@ def main():
     for gt_name in GROUNDTRUTH_NAMES:
         for scanned_pixel_percent in SCANNED_PIXELS_PERCENTAGES:
             low_dwell_queue.put((gt_name,scanned_pixel_percent))
+    '''
+
     """
     for gt_name in groundTruthNames:
         for scanned_pixel_percent in scannedPixelsPercent:
