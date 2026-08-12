@@ -15,12 +15,18 @@ import traceback
 from datetime import datetime
 import delauney
 
-from src.stadsadaptivesampler.src.stads.stads import AdaptiveSampler
-from src.stadsadaptivesampler.src.stads.stratified_sampler import StratifiedSampler
-from src.stadsadaptivesampler.src.stads.monitor import save_error_map, save_pixel_wise_psnr_plots
-from src.stadsadaptivesampler.src.stads.config import HYDRATION_ONE, LI_EXPULSION_ONE, LI_EXPULSION_TWO, SI_LITHIATION_ONE, EDS_AEROSPACE_ONE, EDS_AEROSPACE_TWO, TITANIUM_STRAIN_ONE
-
-from src.stadsadaptivesampler.src.stads.evaluation import calculate_psnr, calculate_ssim
+# stads is a sibling repository installed with `pip install -e`, so import it
+# as a normal package.  This previously reached into a vendored copy at
+# src/stadsadaptivesampler/, which is gitignored by design (".gitignore: src/")
+# and was removed from tracking in 6bd24c4, so the path could never resolve
+# from a clean checkout.
+from stads.stads import AdaptiveSampler
+from stads.stratified_sampler import StratifiedSampler
+from stads.monitor import save_error_map, save_pixel_wise_psnr_plots
+from stads.evaluation import calculate_psnr, calculate_ssim
+# Imported as a module rather than by name: stads.config resolves each ground
+# truth lazily, so only the datasets a run actually touches are downloaded.
+from stads import config
 
 import padis_fsr
 from padis_fsr import generate_mask_for_frame, run_padis_fsr_video_with_masks
@@ -32,14 +38,18 @@ logging.basicConfig(level=logging.INFO)
 # --------------------
 # CONFIG
 # --------------------
+# (stads.config ground-truth key, total dwell time).  The key is stored rather
+# than the frames themselves so that defining this map costs nothing: the video
+# is fetched and decoded by load_video() when a run actually needs it.  Holding
+# the arrays here downloaded and decoded every enabled dataset at import.
 GROUNDTRUTH_MAP = {
-    "hydration_one": (HYDRATION_ONE,25000),
-    "li_expulsion_one": (LI_EXPULSION_ONE,20000),
-    "li_expulsion_two": (LI_EXPULSION_TWO,20000),
-    #"si_lithiation_one": (SI_LITHIATION_ONE,20000),
-    "EDS_aerospace_one": (EDS_AEROSPACE_ONE,20000),
-    #"eds_aerospace_two": (EDS_AEROSPACE_TWO,20000),
-    "Titanium_strain": (TITANIUM_STRAIN_ONE,20000)
+    "hydration_one": ("HYDRATION_ONE", 25000),
+    "li_expulsion_one": ("LI_EXPULSION_ONE", 20000),
+    "li_expulsion_two": ("LI_EXPULSION_TWO", 20000),
+    #"si_lithiation_one": ("SI_LITHIATION_ONE", 20000),
+    "EDS_aerospace_one": ("EDS_AEROSPACE_ONE", 20000),
+    #"eds_aerospace_two": ("EDS_AEROSPACE_TWO", 20000),
+    "Titanium_strain": ("TITANIUM_STRAIN_ONE", 20000)
 }
 
 GROUNDTRUTH_NAMES = list(GROUNDTRUTH_MAP.keys())
@@ -85,7 +95,9 @@ semNoiseModel.load_model("sem_noise_model.pkl")
 # Load video
 # --------------------
 def load_video(gt_name, num_frames, scanned_pixel_percent=None):
-    video, total_dwell_time = GROUNDTRUTH_MAP[gt_name]
+    gt_key, total_dwell_time = GROUNDTRUTH_MAP[gt_name]
+    # Downloaded and decoded on first use, then cached by stads.config.
+    video = config.load_ground_truth(gt_key)
 
     video = video[:num_frames]
 
