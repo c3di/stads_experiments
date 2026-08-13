@@ -45,28 +45,26 @@ logging.basicConfig(level=logging.INFO)
 GROUNDTRUTH_MAP = {
     #"hydration_one": (HYDRATION_ONE,25000),
     "LI_EXPULSION_ONE": (LI_EXPULSION_ONE,20000),
-    "LI_EXPULSION_TWO": (LI_EXPULSION_TWO,20000),
+    #"LI_EXPULSION_TWO": (LI_EXPULSION_TWO,20000),
     #"si_lithiation_one": (SI_LITHIATION_ONE,20000),
-    #"EDS_aerospace_one": (EDS_AEROSPACE_ONE,20000),
-    #"EDS_aerospace_two": (EDS_AEROSPACE_TWO,20000),
-    #"Titanium_strain": (TITANIUM_STRAIN_ONE,20000)
+    "EDS_AEROSPACE_ONE": (EDS_AEROSPACE_ONE,20000),
+    "EDS_AEROSPACE_TWO": (EDS_AEROSPACE_TWO,20000),
+    "TITANIUM_STRAIN": (TITANIUM_STRAIN_ONE,20000)
 }
 
 GROUNDTRUTH_NAMES = list(GROUNDTRUTH_MAP.keys())
 SCANNED_PIXELS_PERCENTAGES = [2.0]#[0.5, 2.0, 5.0, 7.0]#list(np.arange(0.5, 5.5, 0.5)) + [0.1, 7.0, 10.0, 20.0]
-ALPHAS = [0.5] #[0.25,0.5, 1.0, 2.0, 4.0]#list(np.arange(0.5, 5.5, 0.5))
+ALPHAS = [1.0] #[0.25,0.5, 1.0, 2.0, 4.0]#list(np.arange(0.5, 5.5, 0.5))
 BETAS = [] 
 HORIZON = 3 # number of frames to look ahead for offline reconstruction
 TEMPORAL_SAMPLING_OPTIONS = [True]
 TEMPORAL_RECONSTRUCTION_OPTIONS = [True]
 RUN_WITH_OFFLINE = False
-
-# Interpolation backends swept as separate experiments (adaptive sampler only).
 #   "linear" -> barycentric linear      (stads GpuLinearInterpolator)
 #   "cubic"  -> Clough-Tocher cubic     (stads GpuCloughTocherInterpolator)
 # Both run on the GPU via AdaptiveSampler.interpolate_sparse_image_grid.
-# NOTE: this multiplies the adaptive task count by len(INTERPOLATION_METHODS).
-INTERPOLATION_METHODS = ["linear","cubic"]
+INTERPOLATION_METHODS = ["cubic"]
+ADAPTIVE_REFINEMENT_FRACTIONS = [0.0,0.3, 0.5]
 
 numberOfFrames = 951
 output_dir = "plots"
@@ -75,7 +73,7 @@ if RUN_WITH_OFFLINE:
 os.makedirs(output_dir, exist_ok=True)
 LOGFILE = "script_log.txt"
 CSV_PATH = os.path.join(output_dir, "per_frame_results.csv")
-STANDARD_WORKER_POOL_SIZE = 2 #6 probably best value for asr-ws-murdock
+STANDARD_WORKER_POOL_SIZE = 6 #6 probably best value for asr-ws-murdock
 PADIS_WORKER_POOL_SIZE = 1
 
 
@@ -199,11 +197,11 @@ def run_low_dwell_time_sampler(gt_name, scanned_pixel_percent):
 # --------------------
 # STADS wrapper
 # --------------------
-def run_sampler(gt_name, scanned_pixel_percent, sampler_type, interpol_method="linear", has_temporal_sampler=True, has_temporal_reconstruction=True, alpha=None, beta=None, run_with_offline=RUN_WITH_OFFLINE, horizon=None):
+def run_sampler(gt_name, scanned_pixel_percent, sampler_type, interpol_method="linear", has_temporal_sampler=True, has_temporal_reconstruction=True, alpha=None, beta=None, adaptive_refinement_fraction=0.0, run_with_offline=RUN_WITH_OFFLINE, horizon=None):
     local_results = []
     t_overall_start = time.perf_counter()
 
-    log(f"Starting: {sampler_type} | interpol={interpol_method} | {gt_name} | S={scanned_pixel_percent}% | SamplerTemporal={has_temporal_sampler}| ReconstructionTemporal={has_temporal_reconstruction} | alpha={alpha}")
+    log(f"Starting: {sampler_type} | interpol={interpol_method} | {gt_name} | S={scanned_pixel_percent}% | SamplerTemporal={has_temporal_sampler}| ReconstructionTemporal={has_temporal_reconstruction} | alpha={alpha} | adaptive_refinement_fraction={adaptive_refinement_fraction}")
     try:
         gt_video = load_video(gt_name, numberOfFrames)
         trueNumberOfFrames = min(gt_video.shape[0],numberOfFrames)
@@ -217,7 +215,8 @@ def run_sampler(gt_name, scanned_pixel_percent, sampler_type, interpol_method="l
                 groundTruthName=gt_name,
                 alpha=alpha,
                 withTemporalSampling=has_temporal_sampler,
-                withTemporalReconstruction=has_temporal_reconstruction
+                withTemporalReconstruction=has_temporal_reconstruction,
+                adaptiveRefinementFraction=adaptive_refinement_fraction
             )
         else:
             sampler = StratifiedSampler(
@@ -238,7 +237,7 @@ def run_sampler(gt_name, scanned_pixel_percent, sampler_type, interpol_method="l
         # Save figures
         # interpol_method is part of the path: without it a cubic run would
         # overwrite the linear run's figures for the same configuration.
-        example_dir = os.path.join(output_dir, "examples", sampler_type, f"interpol_{interpol_method}", f"sparsity_{scanned_pixel_percent}", gt_name, f"sampler_{has_temporal_sampler}_reconstruction_{has_temporal_reconstruction}", f"alpha_{alpha}")
+        example_dir = os.path.join(output_dir, "examples", sampler_type, f"interpol_{interpol_method}", f"sparsity_{scanned_pixel_percent}", gt_name, f"sampler_{has_temporal_sampler}_reconstruction_{has_temporal_reconstruction}", f"alpha_{alpha}", f"adaptive_{adaptive_refinement_fraction}")
         os.makedirs(example_dir, exist_ok=True)
 
         t_save_start = time.perf_counter()
@@ -270,7 +269,8 @@ def run_sampler(gt_name, scanned_pixel_percent, sampler_type, interpol_method="l
                 "alpha": alpha if (sampler_type == "adaptive" and has_temporal_reconstruction) else None,
                 "beta": alpha if (sampler_type == "adaptive" and has_temporal_reconstruction) else None,
                 "bidirectional": run_with_offline if sampler_type == "adaptive" else None,
-                "horizon": horizon if (sampler_type == "adaptive" and has_temporal_reconstruction and run_with_offline) else None
+                "horizon": horizon if (sampler_type == "adaptive" and has_temporal_reconstruction and run_with_offline) else None,
+                "adaptive_refinement_fraction": adaptive_refinement_fraction if sampler_type == "adaptive" else None
             })
 
         log(f"[DONE] {sampler_type} | interpol={interpol_method} | {gt_name} | S={scanned_pixel_percent}%")
@@ -341,7 +341,7 @@ class LowDwellWorker(threading.Thread):
 class OutputWorker(threading.Thread):
     def __init__(self, result_queue, group = None, target = None, name = None, args = ..., kwargs = None, *, daemon = None):
         self.result_queue = result_queue
-        self.fieldnames = ["sampler", "withTemporalSampler", "withTemporalReconstruction", "gt_name", "scanned_pixel_percent", "frame_idx", "PSNR", "SSIM", "alpha", "beta", "bidirectional", "horizon"]
+        self.fieldnames = ["sampler", "withTemporalSampler", "withTemporalReconstruction", "gt_name", "scanned_pixel_percent", "frame_idx", "PSNR", "SSIM", "alpha", "beta", "bidirectional", "horizon", "adaptive_refinement_fraction"]
         self.csv_path = os.path.join(output_dir, "per_frame_results.csv")
 
         super().__init__(group, target, name, args, kwargs, daemon=daemon)
@@ -454,11 +454,12 @@ def main():
             for use_temporal_sampler in TEMPORAL_SAMPLING_OPTIONS:
                 for use_temporal_reconstruction in TEMPORAL_RECONSTRUCTION_OPTIONS:
                     for scanned_pixel_percent in SCANNED_PIXELS_PERCENTAGES:
-                        if use_temporal_reconstruction:
-                            for alpha in ALPHAS:
-                                sampler_tasks.append((gt_name, scanned_pixel_percent, "adaptive", interpol_method, use_temporal_sampler, use_temporal_reconstruction, alpha))
-                        else:
-                            sampler_tasks.append((gt_name, scanned_pixel_percent, "adaptive", interpol_method, use_temporal_sampler, use_temporal_reconstruction, 1.0)) # alpha is irrelevant when temporal reconstruction is disabled
+                        for adaptive_refinement_fraction in ADAPTIVE_REFINEMENT_FRACTIONS:
+                            if use_temporal_reconstruction:
+                                for alpha in ALPHAS:
+                                    sampler_tasks.append((gt_name, scanned_pixel_percent, "adaptive", interpol_method, use_temporal_sampler, use_temporal_reconstruction, alpha, adaptive_refinement_fraction))
+                            else:
+                                sampler_tasks.append((gt_name, scanned_pixel_percent, "adaptive", interpol_method, use_temporal_sampler, use_temporal_reconstruction, 1.0, adaptive_refinement_fraction)) # alpha is irrelevant when temporal reconstruction is disabled
     
     
     # Add stratified sampler tasks (no temporal options, no alpha).
