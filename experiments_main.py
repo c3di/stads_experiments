@@ -20,13 +20,13 @@ import delauney
 # src/stadsadaptivesampler/, which is gitignored by design (".gitignore: src/")
 # and was removed from tracking in 6bd24c4, so the path could never resolve
 # from a clean checkout.
-from stads.stads import AdaptiveSampler
-from stads.stratified_sampler import StratifiedSampler
-from stads.monitor import save_error_map, save_pixel_wise_psnr_plots
-from stads.evaluation import calculate_psnr, calculate_ssim
-# Imported as a module rather than by name: stads.config resolves each ground
-# truth lazily, so only the datasets a run actually touches are downloaded.
-from stads import config
+from src.stadsadaptivesampler.src.stads.stads import AdaptiveSampler
+from src.stadsadaptivesampler.src.stads.stratified_sampler import StratifiedSampler
+from src.stadsadaptivesampler.src.stads.monitor import save_error_map, save_pixel_wise_psnr_plots
+from src.stadsadaptivesampler.src.stads.config import HYDRATION_ONE, LI_EXPULSION_ONE, LI_EXPULSION_TWO, SI_LITHIATION_ONE, EDS_AEROSPACE_ONE, EDS_AEROSPACE_TWO, TITANIUM_STRAIN_ONE
+
+from src.stadsadaptivesampler.src.stads.evaluation import calculate_psnr, calculate_ssim
+from src.stadsadaptivesampler.src.stads import config
 
 import padis_fsr
 from padis_fsr import generate_mask_for_frame, run_padis_fsr_video_with_masks
@@ -43,38 +43,39 @@ logging.basicConfig(level=logging.INFO)
 # is fetched and decoded by load_video() when a run actually needs it.  Holding
 # the arrays here downloaded and decoded every enabled dataset at import.
 GROUNDTRUTH_MAP = {
-    "hydration_one": ("HYDRATION_ONE", 25000),
-    "li_expulsion_one": ("LI_EXPULSION_ONE", 20000),
-    "li_expulsion_two": ("LI_EXPULSION_TWO", 20000),
-    #"si_lithiation_one": ("SI_LITHIATION_ONE", 20000),
-    "EDS_aerospace_one": ("EDS_AEROSPACE_ONE", 20000),
-    #"eds_aerospace_two": ("EDS_AEROSPACE_TWO", 20000),
-    "Titanium_strain": ("TITANIUM_STRAIN_ONE", 20000)
+    #"hydration_one": (HYDRATION_ONE,25000),
+    "LI_EXPULSION_ONE": (LI_EXPULSION_ONE,20000),
+    "LI_EXPULSION_TWO": (LI_EXPULSION_TWO,20000),
+    #"si_lithiation_one": (SI_LITHIATION_ONE,20000),
+    #"EDS_aerospace_one": (EDS_AEROSPACE_ONE,20000),
+    #"EDS_aerospace_two": (EDS_AEROSPACE_TWO,20000),
+    #"Titanium_strain": (TITANIUM_STRAIN_ONE,20000)
 }
 
 GROUNDTRUTH_NAMES = list(GROUNDTRUTH_MAP.keys())
-SCANNED_PIXELS_PERCENTAGES = [0.5, 2.0, 5.0, 7.0]#list(np.arange(0.5, 5.5, 0.5)) + [0.1, 7.0, 10.0, 20.0]
-ALPHAS = [0.5, 1.0, 2.0, 4.0] #[0.25,0.5, 1.0, 2.0, 4.0]#list(np.arange(0.5, 5.5, 0.5))
+SCANNED_PIXELS_PERCENTAGES = [2.0]#[0.5, 2.0, 5.0, 7.0]#list(np.arange(0.5, 5.5, 0.5)) + [0.1, 7.0, 10.0, 20.0]
+ALPHAS = [0.5] #[0.25,0.5, 1.0, 2.0, 4.0]#list(np.arange(0.5, 5.5, 0.5))
+BETAS = [] 
 HORIZON = 3 # number of frames to look ahead for offline reconstruction
-TEMPORAL_SAMPLING_OPTIONS = [True, False]
-TEMPORAL_RECONSTRUCTION_OPTIONS = [True, False]
-RUN_WITH_OFFLINE = True
+TEMPORAL_SAMPLING_OPTIONS = [True]
+TEMPORAL_RECONSTRUCTION_OPTIONS = [True]
+RUN_WITH_OFFLINE = False
 
 # Interpolation backends swept as separate experiments (adaptive sampler only).
 #   "linear" -> barycentric linear      (stads GpuLinearInterpolator)
 #   "cubic"  -> Clough-Tocher cubic     (stads GpuCloughTocherInterpolator)
 # Both run on the GPU via AdaptiveSampler.interpolate_sparse_image_grid.
 # NOTE: this multiplies the adaptive task count by len(INTERPOLATION_METHODS).
-INTERPOLATION_METHODS = ["linear", "cubic"]
+INTERPOLATION_METHODS = ["linear","cubic"]
 
-numberOfFrames = 20
+numberOfFrames = 951
 output_dir = "plots"
 if RUN_WITH_OFFLINE:
     output_dir += "_offline"
 os.makedirs(output_dir, exist_ok=True)
 LOGFILE = "script_log.txt"
 CSV_PATH = os.path.join(output_dir, "per_frame_results.csv")
-STANDARD_WORKER_POOL_SIZE = 6 #6 probably best value for asr-ws-murdock
+STANDARD_WORKER_POOL_SIZE = 2 #6 probably best value for asr-ws-murdock
 PADIS_WORKER_POOL_SIZE = 1
 
 
@@ -104,7 +105,7 @@ semNoiseModel.load_model("sem_noise_model.pkl")
 def load_video(gt_name, num_frames, scanned_pixel_percent=None):
     gt_key, total_dwell_time = GROUNDTRUTH_MAP[gt_name]
     # Downloaded and decoded on first use, then cached by stads.config.
-    video = config.load_ground_truth(gt_key)
+    video = config.load_ground_truth(gt_name)
 
     video = video[:num_frames]
 
@@ -198,13 +199,13 @@ def run_low_dwell_time_sampler(gt_name, scanned_pixel_percent):
 # --------------------
 # STADS wrapper
 # --------------------
-def run_sampler(gt_name, scanned_pixel_percent, sampler_type, interpol_method="linear", has_temporal_sampler=True, has_temporal_reconstruction=True, alpha=None, run_with_offline=RUN_WITH_OFFLINE, horizon=None):
+def run_sampler(gt_name, scanned_pixel_percent, sampler_type, interpol_method="linear", has_temporal_sampler=True, has_temporal_reconstruction=True, alpha=None, beta=None, run_with_offline=RUN_WITH_OFFLINE, horizon=None):
     local_results = []
     t_overall_start = time.perf_counter()
 
     log(f"Starting: {sampler_type} | interpol={interpol_method} | {gt_name} | S={scanned_pixel_percent}% | SamplerTemporal={has_temporal_sampler}| ReconstructionTemporal={has_temporal_reconstruction} | alpha={alpha}")
     try:
-        gt_video = load_video(gt_name,numberOfFrames,100.0)
+        gt_video = load_video(gt_name, numberOfFrames)
         trueNumberOfFrames = min(gt_video.shape[0],numberOfFrames)
 
         if sampler_type == "adaptive":
@@ -228,11 +229,11 @@ def run_sampler(gt_name, scanned_pixel_percent, sampler_type, interpol_method="l
 
         t_run_start = time.perf_counter()
         if run_with_offline:
-            rec_video, PSNRs, SSIMs = sampler.run_offline(alphaPast=alpha, alphaFuture=alpha, horizon=horizon)
+            rec_video, PSNRs, SSIMs = sampler.run_offline(alphaPast=alpha, alphaFuture=beta, horizon=horizon)
         else:
             rec_video, PSNRs, SSIMs = sampler.run()
         t_run_end = time.perf_counter()
-        log(f"[TIMING] sampler.run(): {t_run_end - t_run_start:.2f}s | {sampler_type} | {gt_name} | S={scanned_pixel_percent}% | alpha={alpha}")
+        log(f"[TIMING] sampler.run(): {t_run_end - t_run_start:.2f}s | {sampler_type} | {gt_name} | S={scanned_pixel_percent}% | alpha={alpha} | beta={beta} | horizon={horizon} | withTemporalSampler={has_temporal_sampler} | withTemporalReconstruction={has_temporal_reconstruction}")
 
         # Save figures
         # interpol_method is part of the path: without it a cubic run would
