@@ -43,29 +43,46 @@ logging.basicConfig(level=logging.INFO)
 # is fetched and decoded by load_video() when a run actually needs it.  Holding
 # the arrays here downloaded and decoded every enabled dataset at import.
 GROUNDTRUTH_MAP = {
-    "hydration_one": ("HYDRATION_ONE", 25000),
-    "li_expulsion_one": ("LI_EXPULSION_ONE", 20000),
-    "li_expulsion_two": ("LI_EXPULSION_TWO", 20000),
-    #"si_lithiation_one": ("SI_LITHIATION_ONE", 20000),
-    "EDS_aerospace_one": ("EDS_AEROSPACE_ONE", 20000),
-    #"eds_aerospace_two": ("EDS_AEROSPACE_TWO", 20000),
-    "Titanium_strain": ("TITANIUM_STRAIN_ONE", 20000)
+    # "HYDRATION_ONE": ("HYDRATION_ONE", 25000),
+    "LI_EXPULSION_ONE": ("LI_EXPULSION_ONE", 20000),
+    # "LI_EXPULSION_TWO": ("LI_EXPULSION_TWO", 20000),
+    #"SI_LITHIATION_ONE": ("SI_LITHIATION_ONE", 20000),
+    # "EDS_AEROSPACE_ONE": ("EDS_AEROSPACE_ONE", 20000),
+    # "EDS_AEROSPACE_TWO":   ("EDS_AEROSPACE_TWO", 20000),
+    # "TITANIUM_STRAIN_ONE": ("TITANIUM_STRAIN_ONE", 20000)
 }
 
 GROUNDTRUTH_NAMES = list(GROUNDTRUTH_MAP.keys())
-SCANNED_PIXELS_PERCENTAGES = [0.5, 2.0, 5.0, 7.0]#list(np.arange(0.5, 5.5, 0.5)) + [0.1, 7.0, 10.0, 20.0]
-ALPHAS = [0.5, 1.0, 2.0, 4.0] #[0.25,0.5, 1.0, 2.0, 4.0]#list(np.arange(0.5, 5.5, 0.5))
-HORIZON = 3 # number of frames to look ahead for offline reconstruction
-TEMPORAL_SAMPLING_OPTIONS = [True, False]
-TEMPORAL_RECONSTRUCTION_OPTIONS = [True, False]
-RUN_WITH_OFFLINE = True
 
 # Interpolation backends swept as separate experiments (adaptive sampler only).
 #   "linear" -> barycentric linear      (stads GpuLinearInterpolator)
 #   "cubic"  -> Clough-Tocher cubic     (stads GpuCloughTocherInterpolator)
 # Both run on the GPU via AdaptiveSampler.interpolate_sparse_image_grid.
 # NOTE: this multiplies the adaptive task count by len(INTERPOLATION_METHODS).
-INTERPOLATION_METHODS = ["linear", "cubic"]
+INTERPOLATION_METHODS = ["cubic"]
+
+SCANNED_PIXELS_PERCENTAGES = [2.0]#[0.5, 2.0, 5.0, 7.0]#list(np.arange(0.5, 5.5, 0.5)) + [0.1, 7.0, 10.0, 20.0]
+ALPHAS = [2.0] #[0.25,0.5, 1.0, 2.0, 4.0]#list(np.arange(0.5, 5.5, 0.5))
+BETAS = []
+HORIZON = 3 # number of frames to look ahead for offline reconstruction
+TEMPORAL_SAMPLING_OPTIONS = [True]
+TEMPORAL_RECONSTRUCTION_OPTIONS = [True]
+RUN_WITH_OFFLINE = False
+ 
+# Interpolation backends swept as separate experiments (adaptive sampler only).
+#   "linear" -> barycentric linear      (stads GpuLinearInterpolator)
+#   "cubic"  -> Clough-Tocher cubic     (stads GpuCloughTocherInterpolator)
+# Both run on the GPU via AdaptiveSampler.interpolate_sparse_image_grid.
+# NOTE: this multiplies the adaptive task count by len(INTERPOLATION_METHODS).
+INTERPOLATION_METHODS = ["cubic"]
+
+# True adaptive sampling: the share of each frame's budget held back from the
+# PDF draw and spent inside the frame, subdividing the triangulation edges this
+# frame's own samples say are worst. 0.0 is the previous behaviour exactly.
+# The total number of acquired pixels is unchanged either way, so runs at
+# different fractions are comparable at equal budget.
+# NOTE: this multiplies the adaptive task count by len(ADAPTIVE_REFINEMENT_FRACTIONS).
+ADAPTIVE_REFINEMENT_FRACTIONS = [0.3, 0.5] #[0.0, 0.1, 0.3, 0.5]
 
 numberOfFrames = 20
 output_dir = "plots"
@@ -175,7 +192,15 @@ def run_low_dwell_time_sampler(gt_name, scanned_pixel_percent):
                 "frame_idx": frame_idx,
                 "PSNR": PSNRs[frame_idx],
                 "SSIM": SSIMs[frame_idx],
-                "alpha": None
+                "alpha": None,
+                # Every key in OutputWorker.fieldnames has to be present: the
+                # CSV is written with to_csv(columns=fieldnames), and a batch
+                # containing only these rows would otherwise have no such
+                # column at all and raise KeyError.
+                "beta": None,
+                "bidirectional": None,
+                "horizon": None,
+                "adaptiveFraction": None
             })
 
         log(
@@ -198,11 +223,11 @@ def run_low_dwell_time_sampler(gt_name, scanned_pixel_percent):
 # --------------------
 # STADS wrapper
 # --------------------
-def run_sampler(gt_name, scanned_pixel_percent, sampler_type, interpol_method="linear", has_temporal_sampler=True, has_temporal_reconstruction=True, alpha=None, run_with_offline=RUN_WITH_OFFLINE, horizon=None):
+def run_sampler(gt_name, scanned_pixel_percent, sampler_type, interpol_method="linear", has_temporal_sampler=True, has_temporal_reconstruction=True, alpha=None, adaptive_fraction=0.0, run_with_offline=RUN_WITH_OFFLINE, horizon=None):
     local_results = []
     t_overall_start = time.perf_counter()
 
-    log(f"Starting: {sampler_type} | interpol={interpol_method} | {gt_name} | S={scanned_pixel_percent}% | SamplerTemporal={has_temporal_sampler}| ReconstructionTemporal={has_temporal_reconstruction} | alpha={alpha}")
+    log(f"Starting: {sampler_type} | interpol={interpol_method} | {gt_name} | S={scanned_pixel_percent}% | SamplerTemporal={has_temporal_sampler}| ReconstructionTemporal={has_temporal_reconstruction} | alpha={alpha} | adaptive={adaptive_fraction}")
     try:
         gt_video = load_video(gt_name,numberOfFrames,100.0)
         trueNumberOfFrames = min(gt_video.shape[0],numberOfFrames)
@@ -216,7 +241,8 @@ def run_sampler(gt_name, scanned_pixel_percent, sampler_type, interpol_method="l
                 groundTruthName=gt_name,
                 alpha=alpha,
                 withTemporalSampling=has_temporal_sampler,
-                withTemporalReconstruction=has_temporal_reconstruction
+                withTemporalReconstruction=has_temporal_reconstruction,
+                adaptiveRefinementFraction=adaptive_fraction
             )
         else:
             sampler = StratifiedSampler(
@@ -237,7 +263,9 @@ def run_sampler(gt_name, scanned_pixel_percent, sampler_type, interpol_method="l
         # Save figures
         # interpol_method is part of the path: without it a cubic run would
         # overwrite the linear run's figures for the same configuration.
-        example_dir = os.path.join(output_dir, "examples", sampler_type, f"interpol_{interpol_method}", f"sparsity_{scanned_pixel_percent}", gt_name, f"sampler_{has_temporal_sampler}_reconstruction_{has_temporal_reconstruction}", f"alpha_{alpha}")
+        # adaptive_fraction likewise, or a refined run would overwrite the
+        # unrefined one it is meant to be compared against.
+        example_dir = os.path.join(output_dir, "examples", sampler_type, f"interpol_{interpol_method}", f"sparsity_{scanned_pixel_percent}", gt_name, f"sampler_{has_temporal_sampler}_reconstruction_{has_temporal_reconstruction}", f"alpha_{alpha}", f"adaptive_{adaptive_fraction}")
         os.makedirs(example_dir, exist_ok=True)
 
         t_save_start = time.perf_counter()
@@ -269,7 +297,8 @@ def run_sampler(gt_name, scanned_pixel_percent, sampler_type, interpol_method="l
                 "alpha": alpha if (sampler_type == "adaptive" and has_temporal_reconstruction) else None,
                 "beta": alpha if (sampler_type == "adaptive" and has_temporal_reconstruction) else None,
                 "bidirectional": run_with_offline if sampler_type == "adaptive" else None,
-                "horizon": horizon if (sampler_type == "adaptive" and has_temporal_reconstruction and run_with_offline) else None
+                "horizon": horizon if (sampler_type == "adaptive" and has_temporal_reconstruction and run_with_offline) else None,
+                "adaptiveFraction": adaptive_fraction if sampler_type == "adaptive" else None
             })
 
         log(f"[DONE] {sampler_type} | interpol={interpol_method} | {gt_name} | S={scanned_pixel_percent}%")
@@ -340,7 +369,7 @@ class LowDwellWorker(threading.Thread):
 class OutputWorker(threading.Thread):
     def __init__(self, result_queue, group = None, target = None, name = None, args = ..., kwargs = None, *, daemon = None):
         self.result_queue = result_queue
-        self.fieldnames = ["sampler", "withTemporalSampler", "withTemporalReconstruction", "gt_name", "scanned_pixel_percent", "frame_idx", "PSNR", "SSIM", "alpha", "beta", "bidirectional", "horizon"]
+        self.fieldnames = ["sampler", "withTemporalSampler", "withTemporalReconstruction", "gt_name", "scanned_pixel_percent", "frame_idx", "PSNR", "SSIM", "alpha", "beta", "bidirectional", "horizon", "adaptiveFraction"]
         self.csv_path = os.path.join(output_dir, "per_frame_results.csv")
 
         super().__init__(group, target, name, args, kwargs, daemon=daemon)
@@ -412,7 +441,12 @@ def run_padis(gt_name, scanned_pixel_percent):
                 "frame_idx": frame_idx,
                 "PSNR": psnrs[frame_idx],
                 "SSIM": ssims[frame_idx],
-                "alpha": None
+                "alpha": None,
+                # See the low_dwell rows: fieldnames must all be present.
+                "beta": None,
+                "bidirectional": None,
+                "horizon": None,
+                "adaptiveFraction": None
             })
 
         log(f"[DONE] PADIS-FSR | {gt_name} | S={scanned_pixel_percent}%")
@@ -447,17 +481,21 @@ def main():
     # Task tuples are unpacked positionally into run_sampler(), so the order
     # here must match its signature:
     #   (gt_name, scanned_pixel_percent, sampler_type, interpol_method,
-    #    has_temporal_sampler, has_temporal_reconstruction, alpha)
+    #    has_temporal_sampler, has_temporal_reconstruction, alpha,
+    #    adaptive_fraction)
+    # adaptive_fraction sits before run_with_offline and horizon, which tasks
+    # never pass positionally.
     for gt_name in GROUNDTRUTH_NAMES:
         for interpol_method in INTERPOLATION_METHODS:
             for use_temporal_sampler in TEMPORAL_SAMPLING_OPTIONS:
                 for use_temporal_reconstruction in TEMPORAL_RECONSTRUCTION_OPTIONS:
                     for scanned_pixel_percent in SCANNED_PIXELS_PERCENTAGES:
-                        if use_temporal_reconstruction:
-                            for alpha in ALPHAS:
-                                sampler_tasks.append((gt_name, scanned_pixel_percent, "adaptive", interpol_method, use_temporal_sampler, use_temporal_reconstruction, alpha))
-                        else:
-                            sampler_tasks.append((gt_name, scanned_pixel_percent, "adaptive", interpol_method, use_temporal_sampler, use_temporal_reconstruction, 1.0)) # alpha is irrelevant when temporal reconstruction is disabled
+                        for adaptive_fraction in ADAPTIVE_REFINEMENT_FRACTIONS:
+                            if use_temporal_reconstruction:
+                                for alpha in ALPHAS:
+                                    sampler_tasks.append((gt_name, scanned_pixel_percent, "adaptive", interpol_method, use_temporal_sampler, use_temporal_reconstruction, alpha, adaptive_fraction))
+                            else:
+                                sampler_tasks.append((gt_name, scanned_pixel_percent, "adaptive", interpol_method, use_temporal_sampler, use_temporal_reconstruction, 1.0, adaptive_fraction)) # alpha is irrelevant when temporal reconstruction is disabled
     
     
     # Add stratified sampler tasks (no temporal options, no alpha).
