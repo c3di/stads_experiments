@@ -73,5 +73,6 @@ script_log.txt
 src/
 
 # Generated output files
-plots/
+plots*/
 movie_analysis/
+lambda_diagnostic.png
