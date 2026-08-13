@@ -74,5 +74,6 @@ src/
 
 # Generated output files
 plots*/
+plots_after_report.zip
 movie_analysis/
 lambda_diagnostic.png
