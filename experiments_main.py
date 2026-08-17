@@ -58,10 +58,8 @@ INTERPOLATION_METHODS = ["cubic"]
 SCANNED_PIXELS_PERCENTAGES = [2.0]#[0.5, 2.0, 5.0, 7.0]#list(np.arange(0.5, 5.5, 0.5)) + [0.1, 7.0, 10.0, 20.0]
 ALPHAS = [2.0] #[0.25,0.5, 1.0, 2.0, 4.0]#list(np.arange(0.5, 5.5, 0.5))
 BETAS = []
-HORIZON = 3 # number of frames to look ahead for offline reconstruction
 TEMPORAL_SAMPLING_OPTIONS = [True]
 TEMPORAL_RECONSTRUCTION_OPTIONS = [True]
-RUN_WITH_OFFLINE = False
 
 # True adaptive sampling: the share of each frame's budget held back from the
 # PDF draw and spent inside the frame, subdividing the triangulation edges this
@@ -73,8 +71,6 @@ ADAPTIVE_REFINEMENT_FRACTIONS = [0.3, 0.5] #[0.0, 0.1, 0.3, 0.5]
 
 limit_number_of_frames_to = 20
 output_dir = "plots"
-if RUN_WITH_OFFLINE:
-    output_dir += "_offline"
 os.makedirs(output_dir, exist_ok=True)
 LOGFILE = "script_log.txt"
 CSV_PATH = os.path.join(output_dir, "per_frame_results.csv")
@@ -183,8 +179,6 @@ def run_low_dwell_time_sampler(gt_name, scanned_pixel_percent):
                 # containing only these rows would otherwise have no such
                 # column at all and raise KeyError.
                 "beta": None,
-                "bidirectional": None,
-                "horizon": None,
                 "adaptiveFraction": None
             })
 
@@ -208,7 +202,7 @@ def run_low_dwell_time_sampler(gt_name, scanned_pixel_percent):
 # --------------------
 # STADS wrapper
 # --------------------
-def run_sampler(gt_name, scanned_pixel_percent, sampler_type, interpol_method="linear", has_temporal_sampler=True, has_temporal_reconstruction=True, alpha=None, adaptive_fraction=0.0, run_with_offline=RUN_WITH_OFFLINE, horizon=None):
+def run_sampler(gt_name, scanned_pixel_percent, sampler_type, interpol_method="linear", has_temporal_sampler=True, has_temporal_reconstruction=True, alpha=None, adaptive_fraction=0.0):
     local_results = []
     t_overall_start = time.perf_counter()
 
@@ -238,10 +232,7 @@ def run_sampler(gt_name, scanned_pixel_percent, sampler_type, interpol_method="l
         trueNumberOfFrames = sampler.numberOfFrames
 
         t_run_start = time.perf_counter()
-        if run_with_offline:
-            rec_video, PSNRs, SSIMs = sampler.run_offline(alphaPast=alpha, alphaFuture=alpha, horizon=horizon)
-        else:
-            rec_video, PSNRs, SSIMs = sampler.run()
+        rec_video, PSNRs, SSIMs = sampler.run()
         t_run_end = time.perf_counter()
         log(f"[TIMING] sampler.run(): {t_run_end - t_run_start:.2f}s | {sampler_type} | {gt_name} | S={scanned_pixel_percent}% | alpha={alpha}")
 
@@ -257,10 +248,7 @@ def run_sampler(gt_name, scanned_pixel_percent, sampler_type, interpol_method="l
         failed_figures = False
         for frame_idx in range(trueNumberOfFrames):
             try:
-                if run_with_offline:
-                    sampler.save_offline_figures(frameNumber=frame_idx, save_path=example_dir)
-                else:
-                    sampler.save_figures(frameNumber=frame_idx, save_path=example_dir)
+                sampler.save_figures(frameNumber=frame_idx, save_path=example_dir)
             except Exception as e:
                 log(f"[ERROR] Failed to save figures for frame {frame_idx} | {gt_name} | {scanned_pixel_percent}% | {sampler_type} | {e}")
                 failed_figures = True
@@ -281,8 +269,6 @@ def run_sampler(gt_name, scanned_pixel_percent, sampler_type, interpol_method="l
                 "SSIM": SSIMs[frame_idx],
                 "alpha": alpha if (sampler_type == "adaptive" and has_temporal_reconstruction) else None,
                 "beta": alpha if (sampler_type == "adaptive" and has_temporal_reconstruction) else None,
-                "bidirectional": run_with_offline if sampler_type == "adaptive" else None,
-                "horizon": horizon if (sampler_type == "adaptive" and has_temporal_reconstruction and run_with_offline) else None,
                 "adaptiveFraction": adaptive_fraction if sampler_type == "adaptive" else None
             })
 
@@ -322,7 +308,7 @@ class PadisWorker(threading.Thread):
 class OutputWorker(threading.Thread):
     def __init__(self, result_queue, group = None, target = None, name = None, args = ..., kwargs = None, *, daemon = None):
         self.result_queue = result_queue
-        self.fieldnames = ["sampler", "withTemporalSampler", "withTemporalReconstruction", "gt_name", "scanned_pixel_percent", "frame_idx", "PSNR", "SSIM", "alpha", "beta", "bidirectional", "horizon", "adaptiveFraction"]
+        self.fieldnames = ["sampler", "withTemporalSampler", "withTemporalReconstruction", "gt_name", "scanned_pixel_percent", "frame_idx", "PSNR", "SSIM", "alpha", "beta", "adaptiveFraction"]
         self.csv_path = os.path.join(output_dir, "per_frame_results.csv")
 
         super().__init__(group, target, name, args, kwargs, daemon=daemon)
@@ -397,8 +383,6 @@ def run_padis(gt_name, scanned_pixel_percent):
                 "alpha": None,
                 # See the low_dwell rows: fieldnames must all be present.
                 "beta": None,
-                "bidirectional": None,
-                "horizon": None,
                 "adaptiveFraction": None
             })
 
@@ -436,8 +420,6 @@ def main():
     #   (gt_name, scanned_pixel_percent, sampler_type, interpol_method,
     #    has_temporal_sampler, has_temporal_reconstruction, alpha,
     #    adaptive_fraction)
-    # adaptive_fraction sits before run_with_offline and horizon, which tasks
-    # never pass positionally.
     for gt_name in GROUNDTRUTH_NAMES:
         for interpol_method in INTERPOLATION_METHODS:
             for use_temporal_sampler in TEMPORAL_SAMPLING_OPTIONS:
