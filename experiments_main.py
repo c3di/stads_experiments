@@ -73,7 +73,7 @@ if RUN_WITH_OFFLINE:
 os.makedirs(output_dir, exist_ok=True)
 LOGFILE = "script_log.txt"
 CSV_PATH = os.path.join(output_dir, "per_frame_results.csv")
-STANDARD_WORKER_POOL_SIZE = 6 #6 probably best value for asr-ws-murdock
+STANDARD_WORKER_POOL_SIZE = 3 #6 probably best value for asr-ws-murdock NOT ANYMORE
 PADIS_WORKER_POOL_SIZE = 1
 
 
