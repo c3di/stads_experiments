@@ -16,10 +16,7 @@ from datetime import datetime
 import delauney
 
 # stads is a sibling repository installed with `pip install -e`, so import it
-# as a normal package.  This previously reached into a vendored copy at
-# src/stadsadaptivesampler/, which is gitignored by design (".gitignore: src/")
-# and was removed from tracking in 6bd24c4, so the path could never resolve
-# from a clean checkout.
+# as a normal package rather than reaching into a vendored copy.
 from stads.stads import AdaptiveSampler
 from stads.stratified_sampler import StratifiedSampler
 from stads.monitor import save_error_map, save_pixel_wise_psnr_plots
@@ -41,7 +38,8 @@ logging.basicConfig(level=logging.INFO)
 # (stads.config ground-truth key, total dwell time).  The key is stored rather
 # than the frames themselves so that defining this map costs nothing: the video
 # is fetched and decoded by load_video() when a run actually needs it.  Holding
-# the arrays here downloaded and decoded every enabled dataset at import.
+# the arrays here instead would download and decode every enabled dataset at
+# import time.
 GROUNDTRUTH_MAP = {
     # "HYDRATION_ONE": ("HYDRATION_ONE", 25000),
     "LI_EXPULSION_ONE": ("LI_EXPULSION_ONE", 20000),
@@ -68,13 +66,6 @@ HORIZON = 3 # number of frames to look ahead for offline reconstruction
 TEMPORAL_SAMPLING_OPTIONS = [True]
 TEMPORAL_RECONSTRUCTION_OPTIONS = [True]
 RUN_WITH_OFFLINE = False
- 
-# Interpolation backends swept as separate experiments (adaptive sampler only).
-#   "linear" -> barycentric linear      (stads GpuLinearInterpolator)
-#   "cubic"  -> Clough-Tocher cubic     (stads GpuCloughTocherInterpolator)
-# Both run on the GPU via AdaptiveSampler.interpolate_sparse_image_grid.
-# NOTE: this multiplies the adaptive task count by len(INTERPOLATION_METHODS).
-INTERPOLATION_METHODS = ["cubic"]
 
 # True adaptive sampling: the share of each frame's budget held back from the
 # PDF draw and spent inside the frame, subdividing the triangulation edges this

@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 from matplotlib.collections import LineCollection
-from delauney import RegularDelaunay, GridTriangulation
+from delauney import Voronoi, GridTriangulation
 
 
 # %% — barycentric lambda heatmap diagnostic
@@ -19,7 +19,7 @@ def run_lambda_heatmap():
     coords.update([(0, 0), (W-1, 0), (W-1, H-1), (0, H-1)])
     seeds = sorted(coords, key=lambda s: (s[0], s[1]))
 
-    vgrid = RegularDelaunay().compute(W, H, seeds)
+    vgrid = Voronoi().compute(W, H, seeds)
     tri_map, tgrid = GridTriangulation().compute(vgrid, seeds)
     n_tri = len(tri_map)
 
@@ -105,7 +105,7 @@ def run_random_delaunay():
     seeds = list(coords)
 
     # Compute Voronoi diagram
-    vgrid = RegularDelaunay().compute(W, H, seeds)   # int32 (H, W, 2)
+    vgrid = Voronoi().compute(W, H, seeds)   # int32 (H, W, 2)
 
 
     # Compute Delaunay triangulation

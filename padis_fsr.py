@@ -1,10 +1,5 @@
 #!/usr/bin/env python3
-# padis_fsr.py
-#
-# Clean version with:
-# - generate_mask_for_frame()
-# - run_padis_fsr_frame_with_mask()
-# - run_padis_fsr_video_with_masks()
+# padis_fsr.py -- PADIS FSR reconstruction via an Octave subprocess.
 
 import os
 import tempfile
@@ -19,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 # ------------------------------------------------------------
-# Mask generator (added because your script requires it)
+# Mask generator
 # ------------------------------------------------------------
 def generate_mask_for_frame(frame: np.ndarray, sparsity_percent: int):
     """

@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
-# padis_helpers.py
-# Robust, pure-Python version of PADIS helper routines (based on original).
-# - Includes missing params fields (sig_min_curr, sig_max_factor_curr)
-# - Handles zero-size / division-by-zero edge cases
-# - Uses numpy; intentionally avoids numba to prevent TBB/fork issues
+# padis_helpers.py -- pure-Python port of the PADIS adaptive-sampling helper
+# routines (originally MATLAB). Uses numpy; intentionally avoids numba, to
+# prevent TBB/fork issues.
 
 from __future__ import annotations
 import numpy as np
@@ -14,11 +12,10 @@ from typing import Tuple
 logger = logging.getLogger(__name__)
 
 class params:
-    """
-    Parameter container used by adaptive_sampling_mask_simplified5.
-    Fields added to match original expectations:
-      - sig_min_curr (sigma min)
-      - sig_max_factor_curr (sigma max scaling)
+    """Parameter container used by adaptive_sampling_mask_simplified5.
+
+    sig_min_curr and sig_max_factor_curr set the Gaussian sigma bounds
+    (see find_gstds_simplified).
     """
     def __init__(self,
                  max_add: float,
@@ -30,7 +27,6 @@ class params:
                  k_A: int = 2,
                  sig_min_curr: float = 0.2,
                  sig_max_factor_curr: float = 0.85):
-        # original required fields
         self.max_add = max_add
         self.ld_dens = ld_dens
         self.des_dens = des_dens
@@ -38,7 +34,6 @@ class params:
         self.tau = tau
         self.w_max = w_max
         self.k_A = k_A
-        # new/expected fields
         self.sig_min_curr = sig_min_curr
         self.sig_max_factor_curr = sig_max_factor_curr
 
