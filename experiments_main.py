@@ -322,38 +322,6 @@ class PadisWorker(threading.Thread):
                 self.padis_queue.task_done()
 
 
-class LowDwellWorker(threading.Thread):
-
-    def __init__(self,low_dwell_queue,result_queue,group=None,target=None,name=None, args=..., kwargs=None, *, daemon=None):
-
-        self.low_dwell_queue = low_dwell_queue
-        self.result_queue = result_queue
-        super().__init__(group,target,name,args,kwargs,daemon=daemon)
-
-    def run(self):
-
-        while True:
-
-            try:
-                gt_name, scanned_pixel_percent = self.low_dwell_queue.get(timeout=5)
-                result = run_low_dwell_time_sampler(gt_name,scanned_pixel_percent)
-
-                if result:
-                    self.result_queue.put(result)
-
-                else:
-                    log(f"[LOW DWELL WARNING] No result for {gt_name} | {scanned_pixel_percent}%")
-                self.low_dwell_queue.task_done()
-
-            except queue.Empty:
-                break
-
-            except Exception as e:
-
-                log(f"[LOW DWELL ERROR] {e}\n{traceback.format_exc()}")
-                self.low_dwell_queue.task_done()
-
-
 class OutputWorker(threading.Thread):
     def __init__(self, result_queue, group = None, target = None, name = None, args = ..., kwargs = None, *, daemon = None):
         self.result_queue = result_queue
