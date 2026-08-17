@@ -1,6 +1,5 @@
 import os
 import time
-import pickle
 
 from tifffile import tifffile
 
@@ -13,7 +12,6 @@ import threading
 import logging
 import traceback
 from datetime import datetime
-import delauney
 
 # stads is a sibling repository installed with `pip install -e`, so import it
 # as a normal package rather than reaching into a vendored copy.
@@ -25,10 +23,8 @@ from stads.evaluation import calculate_psnr, calculate_ssim
 # truth lazily, so only the datasets a run actually touches are downloaded.
 from stads import config
 
-import padis_fsr
 from padis_fsr import generate_mask_for_frame, run_padis_fsr_video_with_masks
-from noise_data_preparation import SEMNoiseDataset
-from sem_noise_generator import compute_stats, SEMNoiseModel
+from sem_noise_generator import SEMNoiseModel
 
 logging.basicConfig(level=logging.INFO)
 
@@ -380,9 +376,9 @@ class OutputWorker(threading.Thread):
                         log(f"[OUTPUT WORKER INFO] Appended results to CSV file: {self.csv_path}")
                 else:
                     if not self.result_queue.empty():
-                        log(f"[OUTPUT WORKER WARNING] Received empty result and non-empty queue.")
+                        log("[OUTPUT WORKER WARNING] Received empty result and non-empty queue.")
                     else:
-                        log(f"[OUTPUT WORKER] Received empty result, queue is empty. Assuming all tasks are done. Terminating.")
+                        log("[OUTPUT WORKER] Received empty result, queue is empty. Assuming all tasks are done. Terminating.")
                         break
                 self.result_queue.task_done()
             except queue.Empty:

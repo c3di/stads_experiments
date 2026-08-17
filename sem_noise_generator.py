@@ -1,8 +1,6 @@
-import os
 import pickle
 
 import cv2
-import tifffile
 import numpy as np
 from matplotlib import pyplot as plt
 from scipy.interpolate import CubicSpline

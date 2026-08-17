@@ -89,7 +89,7 @@ def run_lambda_heatmap():
     plt.tight_layout()
     plt.savefig('lambda_diagnostic.png', dpi=130, bbox_inches='tight')
     plt.show()
-    print(f"Saved lambda_diagnostic.png")
+    print("Saved lambda_diagnostic.png")
     print(f"severe (min_lam < -0.5): {severe.sum()} pixels = {pct:.1f}%")
     print(f"min overall: {min_lam.min():.2f}")
 
