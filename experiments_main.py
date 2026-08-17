@@ -71,7 +71,7 @@ RUN_WITH_OFFLINE = False
 # NOTE: this multiplies the adaptive task count by len(ADAPTIVE_REFINEMENT_FRACTIONS).
 ADAPTIVE_REFINEMENT_FRACTIONS = [0.3, 0.5] #[0.0, 0.1, 0.3, 0.5]
 
-numberOfFrames = 20
+limit_number_of_frames_to = 20
 output_dir = "plots"
 if RUN_WITH_OFFLINE:
     output_dir += "_offline"
@@ -105,12 +105,10 @@ semNoiseModel.load_model("sem_noise_model.pkl")
 # --------------------
 # Load video
 # --------------------
-def load_video(gt_name, num_frames, scanned_pixel_percent=None):
+def load_video(gt_name, limit_number_of_frames_to=None, scanned_pixel_percent=None):
     gt_key, total_dwell_time = GROUNDTRUTH_MAP[gt_name]
     # Downloaded and decoded on first use, then cached by stads.config.
-    video = config.load_ground_truth(gt_key)
-
-    video = video[:num_frames]
+    video = config.load_ground_truth(gt_key, limit_number_of_frames_to)
 
     if video.ndim == 4 and video.shape[-1] == 1:
         video = video.squeeze(-1)
@@ -138,7 +136,7 @@ def run_low_dwell_time_sampler(gt_name, scanned_pixel_percent):
 
     try:
 
-        gt_video = load_video(gt_name, numberOfFrames)
+        gt_video = load_video(gt_name, limit_number_of_frames_to)
         _, t_high = GROUNDTRUTH_MAP[gt_name]
         s = scanned_pixel_percent / 100.0
         t_target = s * t_high
@@ -216,16 +214,13 @@ def run_sampler(gt_name, scanned_pixel_percent, sampler_type, interpol_method="l
 
     log(f"Starting: {sampler_type} | interpol={interpol_method} | {gt_name} | S={scanned_pixel_percent}% | SamplerTemporal={has_temporal_sampler}| ReconstructionTemporal={has_temporal_reconstruction} | alpha={alpha} | adaptive={adaptive_fraction}")
     try:
-        gt_video = load_video(gt_name,numberOfFrames,100.0)
-        trueNumberOfFrames = min(gt_video.shape[0],numberOfFrames)
-
         if sampler_type == "adaptive":
             sampler = AdaptiveSampler(
                 initialSampling="stratified",
                 boundaryPlacement="border",
                 interpolMethod=interpol_method,
                 sparsityPercent=scanned_pixel_percent,
-                numberOfFrames=trueNumberOfFrames,
+                limit_number_of_frames_to=limit_number_of_frames_to,
                 groundTruthName=gt_name,
                 alpha=alpha,
                 withTemporalSampling=has_temporal_sampler,
@@ -236,9 +231,11 @@ def run_sampler(gt_name, scanned_pixel_percent, sampler_type, interpol_method="l
             sampler = StratifiedSampler(
                 interpolMethod=interpol_method,
                 sparsityPercent=scanned_pixel_percent,
-                numberOfFrames=trueNumberOfFrames,
+                limit_number_of_frames_to=limit_number_of_frames_to,
                 groundTruthName=gt_name,
             )
+
+        trueNumberOfFrames = sampler.numberOfFrames
 
         t_run_start = time.perf_counter()
         if run_with_offline:
@@ -363,7 +360,7 @@ def run_padis(gt_name, scanned_pixel_percent):
 
     log(f"Starting: PADIS-FSR | {gt_name} | S={scanned_pixel_percent}%")
     try:
-        gt_video = load_video(gt_name, numberOfFrames)
+        gt_video = load_video(gt_name, limit_number_of_frames_to)
         T, H, W = gt_video.shape
 
         masks = [generate_mask_for_frame(gt_video[t], scanned_pixel_percent).astype(np.uint8) for t in range(T)]
