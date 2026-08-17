@@ -19,9 +19,12 @@ from stads.stads import AdaptiveSampler
 from stads.stratified_sampler import StratifiedSampler
 from stads.monitor import save_error_map, save_pixel_wise_psnr_plots
 from stads.evaluation import calculate_psnr, calculate_ssim
-# Imported as a module rather than by name: stads.config resolves each ground
-# truth lazily, so only the datasets a run actually touches are downloaded.
-from stads import config
+from stads.read_images import get_frames_from_tif
+# Datasets are not downloaded on demand any more: run
+# `python -m stads.video_downloader <filename>` first. DEFAULT_SAVE_DIR is
+# where that CLI puts them, and the directory GROUNDTRUTH_MAP's filenames are
+# resolved against below.
+from stads.video_downloader import DEFAULT_SAVE_DIR
 
 from padis_fsr import generate_mask_for_frame, run_padis_fsr_video_with_masks
 from sem_noise_generator import SEMNoiseModel
@@ -31,22 +34,23 @@ logging.basicConfig(level=logging.INFO)
 # --------------------
 # CONFIG
 # --------------------
-# (stads.config ground-truth key, total dwell time).  The key is stored rather
-# than the frames themselves so that defining this map costs nothing: the video
-# is fetched and decoded by load_video() when a run actually needs it.  Holding
-# the arrays here instead would download and decode every enabled dataset at
-# import time.
+# display name -> (filename under DEFAULT_SAVE_DIR, total dwell time)
 GROUNDTRUTH_MAP = {
-    # "HYDRATION_ONE": ("HYDRATION_ONE", 25000),
-    "LI_EXPULSION_ONE": ("LI_EXPULSION_ONE", 20000),
-    # "LI_EXPULSION_TWO": ("LI_EXPULSION_TWO", 20000),
-    #"SI_LITHIATION_ONE": ("SI_LITHIATION_ONE", 20000),
-    # "EDS_AEROSPACE_ONE": ("EDS_AEROSPACE_ONE", 20000),
-    # "EDS_AEROSPACE_TWO":   ("EDS_AEROSPACE_TWO", 20000),
-    # "TITANIUM_STRAIN_ONE": ("TITANIUM_STRAIN_ONE", 20000)
+    # "HYDRATION_ONE": ("Hydration.tif", 25000),
+    "LI_EXPULSION_ONE": ("Li_Expulsion_1.tif", 20000),
+    # "LI_EXPULSION_TWO": ("Li_Expulsion_2.tif", 20000),
+    # "SI_LITHIATION_ONE": ("Si_Lithiation.tif", 20000),
+    # "EDS_AEROSPACE_ONE": ("EDS_aerospace_one.tif", 20000),
+    # "EDS_AEROSPACE_TWO": ("EDS_aerospace_two.tif", 20000),
+    # "TITANIUM_STRAIN_ONE": ("Titanium_strain.tif", 20000)
 }
 
 GROUNDTRUTH_NAMES = list(GROUNDTRUTH_MAP.keys())
+
+
+def _ground_truth_path(gt_name):
+    filename, _ = GROUNDTRUTH_MAP[gt_name]
+    return str(DEFAULT_SAVE_DIR / filename)
 
 # Interpolation backends swept as separate experiments (adaptive sampler only).
 #   "linear" -> barycentric linear      (stads GpuLinearInterpolator)
@@ -102,9 +106,8 @@ semNoiseModel.load_model("sem_noise_model.pkl")
 # Load video
 # --------------------
 def load_video(gt_name, limit_number_of_frames_to=None, scanned_pixel_percent=None):
-    gt_key, total_dwell_time = GROUNDTRUTH_MAP[gt_name]
-    # Downloaded and decoded on first use, then cached by stads.config.
-    video = config.load_ground_truth(gt_key, limit_number_of_frames_to)
+    _, total_dwell_time = GROUNDTRUTH_MAP[gt_name]
+    video = get_frames_from_tif(_ground_truth_path(gt_name), frame_limit=limit_number_of_frames_to)
 
     if video.ndim == 4 and video.shape[-1] == 1:
         video = video.squeeze(-1)
@@ -208,6 +211,7 @@ def run_sampler(gt_name, scanned_pixel_percent, sampler_type, interpol_method="l
 
     log(f"Starting: {sampler_type} | interpol={interpol_method} | {gt_name} | S={scanned_pixel_percent}% | SamplerTemporal={has_temporal_sampler}| ReconstructionTemporal={has_temporal_reconstruction} | alpha={alpha} | adaptive={adaptive_fraction}")
     try:
+        ground_truth_path = _ground_truth_path(gt_name)
         if sampler_type == "adaptive":
             sampler = AdaptiveSampler(
                 initialSampling="stratified",
@@ -215,7 +219,7 @@ def run_sampler(gt_name, scanned_pixel_percent, sampler_type, interpol_method="l
                 interpolMethod=interpol_method,
                 sparsityPercent=scanned_pixel_percent,
                 limit_number_of_frames_to=limit_number_of_frames_to,
-                groundTruthName=gt_name,
+                groundTruthPath=ground_truth_path,
                 alpha=alpha,
                 withTemporalSampling=has_temporal_sampler,
                 withTemporalReconstruction=has_temporal_reconstruction,
@@ -226,7 +230,7 @@ def run_sampler(gt_name, scanned_pixel_percent, sampler_type, interpol_method="l
                 interpolMethod=interpol_method,
                 sparsityPercent=scanned_pixel_percent,
                 limit_number_of_frames_to=limit_number_of_frames_to,
-                groundTruthName=gt_name,
+                groundTruthPath=ground_truth_path,
             )
 
         trueNumberOfFrames = sampler.numberOfFrames
