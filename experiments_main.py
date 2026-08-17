@@ -235,6 +235,7 @@ def run_sampler(gt_name, scanned_pixel_percent, sampler_type, interpol_method="l
         if sampler_type == "adaptive":
             sampler = AdaptiveSampler(
                 initialSampling="stratified",
+                boundaryPlacement="border",
                 interpolMethod=interpol_method,
                 sparsityPercent=scanned_pixel_percent,
                 numberOfFrames=trueNumberOfFrames,
