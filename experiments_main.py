@@ -17,7 +17,7 @@ from datetime import datetime
 # as a normal package rather than reaching into a vendored copy.
 from stads.stads import AdaptiveSampler
 from stads.stratified_sampler import StratifiedSampler
-from stads.monitor import save_error_map, save_pixel_wise_psnr_plots
+from stads.debug_images import save_error_map, save_pixel_wise_psnr_plots
 from stads.evaluation import calculate_psnr, calculate_ssim
 from stads.read_images import get_frames_from_tif
 # Datasets are not downloaded on demand any more: run
