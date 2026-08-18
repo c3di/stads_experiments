@@ -235,12 +235,6 @@ def run_sampler(gt_name, scanned_pixel_percent, sampler_type, interpol_method="l
 
         trueNumberOfFrames = sampler.numberOfFrames
 
-        t_run_start = time.perf_counter()
-        rec_video, PSNRs, SSIMs = sampler.run()
-        t_run_end = time.perf_counter()
-        log(f"[TIMING] sampler.run(): {t_run_end - t_run_start:.2f}s | {sampler_type} | {gt_name} | S={scanned_pixel_percent}% | alpha={alpha}")
-
-        # Save figures
         # interpol_method is part of the path: without it a cubic run would
         # overwrite the linear run's figures for the same configuration.
         # adaptive_fraction likewise, or a refined run would overwrite the
@@ -248,16 +242,22 @@ def run_sampler(gt_name, scanned_pixel_percent, sampler_type, interpol_method="l
         example_dir = os.path.join(output_dir, "examples", sampler_type, f"interpol_{interpol_method}", f"sparsity_{scanned_pixel_percent}", gt_name, f"sampler_{has_temporal_sampler}_reconstruction_{has_temporal_reconstruction}", f"alpha_{alpha}", f"adaptive_{adaptive_fraction}")
         os.makedirs(example_dir, exist_ok=True)
 
-        t_save_start = time.perf_counter()
-        failed_figures = False
-        for frame_idx in range(trueNumberOfFrames):
-            try:
-                sampler.save_figures(frameNumber=frame_idx, save_path=example_dir)
-            except Exception as e:
-                log(f"[ERROR] Failed to save figures for frame {frame_idx} | {gt_name} | {scanned_pixel_percent}% | {sampler_type} | {e}")
-                failed_figures = True
-        t_save_end = time.perf_counter()
-        log(f"[TIMING] save_figures loop: {t_save_end - t_save_start:.2f}s | {sampler_type} | {gt_name} | S={scanned_pixel_percent}% | alpha={alpha} | failed_figures={failed_figures}")
+        t_run_start = time.perf_counter()
+        if sampler_type == "adaptive":
+            # AdaptiveSampler writes each frame's enabled debug images as it
+            # produces them (see stads' debug_images/) rather than in a
+            # separate pass afterward, so this now includes that I/O.
+            rec_video, PSNRs, SSIMs = sampler.run(save_path=example_dir)
+        else:
+            # StratifiedSampler still uses the older two-phase pattern.
+            rec_video, PSNRs, SSIMs = sampler.run()
+            for frame_idx in range(trueNumberOfFrames):
+                try:
+                    sampler.save_figures(frameNumber=frame_idx, save_path=example_dir)
+                except Exception as e:
+                    log(f"[ERROR] Failed to save figures for frame {frame_idx} | {gt_name} | {scanned_pixel_percent}% | {sampler_type} | {e}")
+        t_run_end = time.perf_counter()
+        log(f"[TIMING] sampler.run(): {t_run_end - t_run_start:.2f}s | {sampler_type} | {gt_name} | S={scanned_pixel_percent}% | alpha={alpha}")
 
         # Collect results (LOCAL!)
         for frame_idx in range(trueNumberOfFrames):
