@@ -327,6 +327,8 @@ def main():
     # Not swept over INTERPOLATION_METHODS: this baseline goes through
     # ImageInterpolator (scipy), where "cubic" means griddata's cubic, not
     # Clough-Tocher, so sweeping it here would not compare like with like.
+    # Required baseline -- currently disabled only to narrow this particular
+    # run to the adaptive sampler; not dead code, don't delete.
     '''
     for gt_name in GROUNDTRUTH_NAMES:
         for scanned_pixel_percent in SCANNED_PIXELS_PERCENTAGES:
@@ -350,8 +352,13 @@ def main():
                 log(f"[WORKER ERROR] {task} | {e}\n{traceback.format_exc()}")
 
     # Low-dwell tasks run in separate processes using the same completion handling.
-    # Currently disabled -- see the commented-out sampler_tasks block above for
-    # how this list used to be populated (as a plain baseline sweep, not queue-fed).
+    # Required baseline -- currently disabled only to narrow this particular
+    # run to the adaptive sampler; not dead code, don't delete.
+    '''
+    for gt_name in GROUNDTRUTH_NAMES:
+        for scanned_pixel_percent in SCANNED_PIXELS_PERCENTAGES:
+            low_dwell_tasks.append((gt_name, scanned_pixel_percent))
+    '''
     low_dwell_tasks = []
 
     with ProcessPoolExecutor(max_workers=STANDARD_WORKER_POOL_SIZE) as executor:
