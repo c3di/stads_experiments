@@ -7,8 +7,6 @@ import numpy as np
 import pandas as pd
 import concurrent.futures
 from concurrent.futures import ProcessPoolExecutor
-import queue
-import threading
 import logging
 import traceback
 from datetime import datetime
@@ -26,7 +24,6 @@ from stads.read_images import get_frames_from_tif
 # resolved against below.
 from stads.video_downloader import DEFAULT_SAVE_DIR
 
-from padis_fsr import generate_mask_for_frame, run_padis_fsr_video_with_masks
 from sem_noise_generator import SEMNoiseModel
 
 logging.basicConfig(level=logging.INFO)
@@ -79,7 +76,6 @@ os.makedirs(output_dir, exist_ok=True)
 LOGFILE = "script_log.txt"
 CSV_PATH = os.path.join(output_dir, "per_frame_results.csv")
 STANDARD_WORKER_POOL_SIZE = 6 #6 probably best value for asr-ws-murdock
-PADIS_WORKER_POOL_SIZE = 1
 
 
 # --------------------
@@ -177,8 +173,8 @@ def run_low_dwell_time_sampler(gt_name, scanned_pixel_percent):
                 "PSNR": PSNRs[frame_idx],
                 "SSIM": SSIMs[frame_idx],
                 "alpha": None,
-                # Every key in OutputWorker.fieldnames has to be present: the
-                # CSV is written with to_csv(columns=fieldnames), and a batch
+                # Every key in CSV_FIELDNAMES has to be present: write_results
+                # writes with to_csv(columns=CSV_FIELDNAMES), and a batch
                 # containing only these rows would otherwise have no such
                 # column at all and raise KeyError.
                 "beta": None,
@@ -277,116 +273,21 @@ def run_sampler(gt_name, scanned_pixel_percent, sampler_type, interpol_method="l
     return local_results
 
 
-class PadisWorker(threading.Thread):
-    def __init__(self, padis_queue, result_queue, group = None, target = None, name = None, args = ..., kwargs = None, *, daemon = None):
-        self.padis_queue = padis_queue
-        self.result_queue = result_queue
-        super().__init__(group, target, name, args, kwargs, daemon=daemon)
-
-    def run(self):
-        while True:
-            try:
-                gt_name, scanned_pixel_percent = self.padis_queue.get(timeout=5)
-                result = run_padis(gt_name, scanned_pixel_percent)
-                if result:
-                    self.result_queue.put(result)
-                else:
-                    log(f"[PADIS WORKER WARNING] No result for {gt_name} | {scanned_pixel_percent}%")
-                self.padis_queue.task_done()
-            except queue.Empty:
-                break
-            except Exception as e:
-                log(f"[PADIS WORKER ERROR] {e}\n{traceback.format_exc()}")
-                self.padis_queue.task_done()
+CSV_FIELDNAMES = ["sampler", "withTemporalSampler", "withTemporalReconstruction", "gt_name",
+                   "scanned_pixel_percent", "frame_idx", "PSNR", "SSIM", "alpha", "beta", "adaptiveFraction"]
 
 
-class OutputWorker(threading.Thread):
-    def __init__(self, result_queue, group = None, target = None, name = None, args = ..., kwargs = None, *, daemon = None):
-        self.result_queue = result_queue
-        self.fieldnames = ["sampler", "withTemporalSampler", "withTemporalReconstruction", "gt_name", "scanned_pixel_percent", "frame_idx", "PSNR", "SSIM", "alpha", "beta", "adaptiveFraction"]
-        self.csv_path = os.path.join(output_dir, "per_frame_results.csv")
-
-        super().__init__(group, target, name, args, kwargs, daemon=daemon)
-
-    def run(self):
-        while True:
-            try:
-                results = self.result_queue.get(timeout=10)
-                if results:
-                    df = pd.DataFrame(results)
-                    if not os.path.exists(self.csv_path):
-                        log(f"[OUTPUT WORKER INFO] Creating new CSV file: {self.csv_path}")
-                        df.to_csv(self.csv_path, index=False, columns=self.fieldnames)
-                    else:
-                        df.to_csv(self.csv_path, index=False, mode='a', header=False, columns=self.fieldnames)
-                        log(f"[OUTPUT WORKER INFO] Appended results to CSV file: {self.csv_path}")
-                else:
-                    if not self.result_queue.empty():
-                        log("[OUTPUT WORKER WARNING] Received empty result and non-empty queue.")
-                    else:
-                        log("[OUTPUT WORKER] Received empty result, queue is empty. Assuming all tasks are done. Terminating.")
-                        break
-                self.result_queue.task_done()
-            except queue.Empty:
-                continue
-            except Exception as e:
-                log(f"[OUTPUT WORKER ERROR] {e}\n{traceback.format_exc()}")
-                self.result_queue.task_done()
-
-# --------------------
-# PADIS wrapper
-# --------------------
-def run_padis(gt_name, scanned_pixel_percent):
-    local_results = []
-
-    log(f"Starting: PADIS-FSR | {gt_name} | S={scanned_pixel_percent}%")
-    try:
-        gt_video = load_video(gt_name, limit_number_of_frames_to)
-        T, H, W = gt_video.shape
-
-        masks = [generate_mask_for_frame(gt_video[t], scanned_pixel_percent).astype(np.uint8) for t in range(T)]
-        rec_video, psnrs, ssims = run_padis_fsr_video_with_masks(gt_video, masks)
-
-        # Save figures
-        example_dir = os.path.join(output_dir, "examples", "padis_fsr", f"sparsity_{scanned_pixel_percent}", gt_name)
-        os.makedirs(example_dir, exist_ok=True)
-
-        for frame_idx in range(T):
-            save_error_map(
-                gt_video[frame_idx], rec_video[frame_idx],
-                savePlot=True,
-                savePath=os.path.join(example_dir, f"frame_{frame_idx:03d}_abs_error_map.tiff")
-            )
-
-            save_pixel_wise_psnr_plots(
-                gt_video[frame_idx], rec_video[frame_idx],
-                savePlot=True,
-                savePath=os.path.join(example_dir, f"frame_{frame_idx:03d}_pixelwise_psnr.tiff")
-            )
-
-        # Collect results
-        for frame_idx in range(T):
-            local_results.append({
-                "sampler": "padis_fsr",
-                "withTemporalSampler": False,
-                "withTemporalReconstruction": False,
-                "gt_name": gt_name,
-                "scanned_pixel_percent": scanned_pixel_percent,
-                "frame_idx": frame_idx,
-                "PSNR": psnrs[frame_idx],
-                "SSIM": ssims[frame_idx],
-                "alpha": None,
-                # See the low_dwell rows: fieldnames must all be present.
-                "beta": None,
-                "adaptiveFraction": None
-            })
-
-        log(f"[DONE] PADIS-FSR | {gt_name} | S={scanned_pixel_percent}%")
-
-    except Exception as e:
-        log(f"[ERROR] PADIS-FSR | {gt_name} | S={scanned_pixel_percent}% | {e}\n{traceback.format_exc()}")
-
-    return local_results
+def write_results(results):
+    """Append a batch of per-frame result dicts to CSV_PATH, called directly
+    from the main thread as each ProcessPoolExecutor future completes."""
+    if not results:
+        return
+    df = pd.DataFrame(results)
+    if not os.path.exists(CSV_PATH):
+        log(f"[OUTPUT] Creating new CSV file: {CSV_PATH}")
+        df.to_csv(CSV_PATH, index=False, columns=CSV_FIELDNAMES)
+    else:
+        df.to_csv(CSV_PATH, index=False, mode='a', header=False, columns=CSV_FIELDNAMES)
 
 # --------------------
 # Main
@@ -399,12 +300,6 @@ def main():
 
     if os.path.exists(CSV_PATH):
         os.remove(CSV_PATH)
-
-
-    low_dwell_queue = queue.Queue()
-
-    padis_queue = queue.Queue()
-    result_queue = queue.Queue()
 
     # Build sampler task list
     #experimental conditions: Main method: adaptive, with/without temporal sampler, with/without temporal reconstruction
@@ -436,27 +331,9 @@ def main():
     for gt_name in GROUNDTRUTH_NAMES:
         for scanned_pixel_percent in SCANNED_PIXELS_PERCENTAGES:
             sampler_tasks.append((gt_name, scanned_pixel_percent, "stratified", "linear", False, False, None))
-    
-    # Add low dwell time sampler tasks as baseline
-    
-    for gt_name in GROUNDTRUTH_NAMES:
-        for scanned_pixel_percent in SCANNED_PIXELS_PERCENTAGES:
-            low_dwell_queue.put((gt_name,scanned_pixel_percent))
     '''
 
-    """
-    for gt_name in groundTruthNames:
-        for scanned_pixel_percent in scannedPixelsPercent:
-            padis_queue.put((gt_name, scanned_pixel_percent))
-    """
-
-    padis_workers = [PadisWorker(padis_queue, result_queue) for _ in range(PADIS_WORKER_POOL_SIZE)]
-    output_worker = OutputWorker(result_queue)
-
     log("===== Starting Parallel Runs =====")
-    for w in padis_workers:
-        w.start()
-    output_worker.start()
 
     # Sampler tasks run in separate processes (bypasses GIL for CPU-bound work).
     with ProcessPoolExecutor(max_workers=STANDARD_WORKER_POOL_SIZE) as executor:
@@ -466,19 +343,16 @@ def main():
             try:
                 result = future.result()
                 if result:
-                    result_queue.put(result)
+                    write_results(result)
                 else:
                     log(f"[WORKER WARNING] No result for {task}")
             except Exception as e:
                 log(f"[WORKER ERROR] {task} | {e}\n{traceback.format_exc()}")
 
     # Low-dwell tasks run in separate processes using the same completion handling.
+    # Currently disabled -- see the commented-out sampler_tasks block above for
+    # how this list used to be populated (as a plain baseline sweep, not queue-fed).
     low_dwell_tasks = []
-    while True:
-        try:
-            low_dwell_tasks.append(low_dwell_queue.get_nowait())
-        except queue.Empty:
-            break
 
     with ProcessPoolExecutor(max_workers=STANDARD_WORKER_POOL_SIZE) as executor:
         futures = {executor.submit(run_low_dwell_time_sampler, *task): task for task in low_dwell_tasks}
@@ -487,16 +361,12 @@ def main():
             try:
                 result = future.result()
                 if result:
-                    result_queue.put(result)
+                    write_results(result)
                 else:
                     log(f"[LOW DWELL WARNING] No result for {task}")
             except Exception as e:
                 log(f"[LOW DWELL ERROR] {task} | {e}\n{traceback.format_exc()}")
 
-    for w in padis_workers:
-        w.join()
-    result_queue.put(None)  # Signal output worker to stop
-    output_worker.join()
     log("===== All Runs Completed =====")
     log(f"Saved per-frame results to {CSV_PATH}")
     t_experiment_end = time.perf_counter()

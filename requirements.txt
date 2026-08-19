@@ -4,7 +4,6 @@ matplotlib~=3.10.3
 scikit-image~=0.25.2
 imageio~=2.37.0
 scipy~=1.15.3
-joblib~=1.5.1
 numba~=0.61.2
 setuptools~=80.8.0
 tqdm~=4.67.1
