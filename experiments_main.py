@@ -23,8 +23,16 @@ from stads.read_images import get_frames_from_tif
 # where that CLI puts them, and the directory GROUNDTRUTH_MAP's filenames are
 # resolved against below.
 from stads.video_downloader import DEFAULT_SAVE_DIR
-
 from sem_noise_generator import SEMNoiseModel
+
+from stads.debug_images.reconstruction import ReconstructionDebugImage
+from stads.debug_images.samples import SamplesDebugImage
+from stads.debug_images.pdf import PdfDebugImage
+from stads.debug_images.flow import FlowDebugImage
+from stads.debug_images.error import ErrorMapDebugImage
+from stads.debug_images.psnr import PsnrMapDebugImage
+from stads.debug_images.ssim import SsimMapDebugImage
+from stads.debug_images.triangulation import TriangulationDebugImage
 
 logging.basicConfig(level=logging.INFO)
 
@@ -33,13 +41,13 @@ logging.basicConfig(level=logging.INFO)
 # --------------------
 # display name -> (filename under DEFAULT_SAVE_DIR, total dwell time)
 GROUNDTRUTH_MAP = {
-    # "HYDRATION_ONE": ("Hydration.tif", 25000),
-    "LI_EXPULSION_ONE": ("Li_Expulsion_1.tif", 20000),
-    # "LI_EXPULSION_TWO": ("Li_Expulsion_2.tif", 20000),
-    # "SI_LITHIATION_ONE": ("Si_Lithiation.tif", 20000),
-    # "EDS_AEROSPACE_ONE": ("EDS_aerospace_one.tif", 20000),
-    # "EDS_AEROSPACE_TWO": ("EDS_aerospace_two.tif", 20000),
-    # "TITANIUM_STRAIN_ONE": ("Titanium_strain.tif", 20000)
+    #"HYDRATION_ONE": ("HYDRATION_ONE", 25000),
+    #"LI_EXPULSION_ONE": ("LI_EXPULSION_ONE", 20000),
+    # "LI_EXPULSION_TWO": ("LI_EXPULSION_TWO", 20000),
+    #"SI_LITHIATION_ONE": ("SI_LITHIATION_ONE", 20000),
+    "EDS_AEROSPACE_ONE": ("EDS_AEROSPACE_ONE", 20000),
+    "EDS_AEROSPACE_TWO":   ("EDS_AEROSPACE_TWO", 20000),
+    #"TITANIUM_STRAIN_ONE": ("TITANIUM_STRAIN_ONE", 20000)
 }
 
 GROUNDTRUTH_NAMES = list(GROUNDTRUTH_MAP.keys())
@@ -47,6 +55,8 @@ GROUNDTRUTH_NAMES = list(GROUNDTRUTH_MAP.keys())
 
 def _ground_truth_path(gt_name):
     filename, _ = GROUNDTRUTH_MAP[gt_name]
+    if not os.path.splitext(filename)[1]:
+        filename = filename + ".tif"
     return str(DEFAULT_SAVE_DIR / filename)
 
 # Interpolation backends swept as separate experiments (adaptive sampler only).
@@ -56,8 +66,8 @@ def _ground_truth_path(gt_name):
 # NOTE: this multiplies the adaptive task count by len(INTERPOLATION_METHODS).
 INTERPOLATION_METHODS = ["cubic"]
 
-SCANNED_PIXELS_PERCENTAGES = [2.0]#[0.5, 2.0, 5.0, 7.0]#list(np.arange(0.5, 5.5, 0.5)) + [0.1, 7.0, 10.0, 20.0]
-ALPHAS = [2.0] #[0.25,0.5, 1.0, 2.0, 4.0]#list(np.arange(0.5, 5.5, 0.5))
+SCANNED_PIXELS_PERCENTAGES = [0.1, 0.5, 2.0, 5.0, 7.0]#list(np.arange(0.5, 5.5, 0.5)) + [0.1, 7.0, 10.0, 20.0]
+ALPHAS = [1.0, 2.0, 4.0, 7.0] #[0.25,0.5, 1.0, 2.0, 4.0]#list(np.arange(0.5, 5.5, 0.5))
 BETAS = []
 TEMPORAL_SAMPLING_OPTIONS = [True]
 TEMPORAL_RECONSTRUCTION_OPTIONS = [True]
@@ -68,9 +78,25 @@ TEMPORAL_RECONSTRUCTION_OPTIONS = [True]
 # The total number of acquired pixels is unchanged either way, so runs at
 # different fractions are comparable at equal budget.
 # NOTE: this multiplies the adaptive task count by len(ADAPTIVE_REFINEMENT_FRACTIONS).
-ADAPTIVE_REFINEMENT_FRACTIONS = [0.3, 0.5] #[0.0, 0.1, 0.3, 0.5]
+ADAPTIVE_REFINEMENT_FRACTIONS = [0.0, 0.3, 0.5] #[0.0, 0.1, 0.3, 0.5]
 
-limit_number_of_frames_to = 20
+DEBUG_IMAGES_ENABLED = True
+
+if DEBUG_IMAGES_ENABLED:
+    DEBUG_IMAGES_DICT = {
+        ReconstructionDebugImage.kind: True,
+        SamplesDebugImage.kind: True,
+        PdfDebugImage.kind: True,
+        FlowDebugImage.kind: False,
+        ErrorMapDebugImage.kind: False,
+        PsnrMapDebugImage.kind: False,
+        SsimMapDebugImage.kind: False,
+        TriangulationDebugImage.kind: False
+    }
+else:
+    DEBUG_IMAGES_DICT = None
+
+limit_number_of_frames_to = 500
 output_dir = "plots"
 os.makedirs(output_dir, exist_ok=True)
 LOGFILE = "script_log.txt"
@@ -219,7 +245,8 @@ def run_sampler(gt_name, scanned_pixel_percent, sampler_type, interpol_method="l
                 alpha=alpha,
                 withTemporalSampling=has_temporal_sampler,
                 withTemporalReconstruction=has_temporal_reconstruction,
-                adaptiveRefinementFraction=adaptive_fraction
+                adaptiveRefinementFraction=adaptive_fraction,
+                debugImages=DEBUG_IMAGES_DICT
             )
         else:
             sampler = StratifiedSampler(
