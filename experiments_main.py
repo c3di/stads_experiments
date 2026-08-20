@@ -175,14 +175,14 @@ def run_low_dwell_time_sampler(gt_name, scanned_pixel_percent):
             rec_video.append(noisy_frame)
 
             psnr = calculate_psnr(frame, noisy_frame)
-            ssim = calculate_ssim(noisy_frame,frame)
+            ssim = calculate_ssim(frame, noisy_frame)
             PSNRs.append(psnr)
             SSIMs.append(ssim)
             tifffile.imwrite(os.path.join(example_dir,f"frame_{i:03d}_low_dwell.tiff"),noisy_frame)
-            save_error_map(frame,noisy_frame,savePlot=True,savePath=os.path.join(example_dir,
-                    f"frame_{i:03d}_abs_error_map.tiff"))
-            save_pixel_wise_psnr_plots(frame,noisy_frame,savePlot=True,savePath=os.path.join(example_dir
-                    ,f"frame_{i:03d}_pixelwise_psnr.tiff"))
+            tifffile.imwrite(os.path.join(example_dir, f"frame_{i:03d}_abs_error_map.tiff"),
+                             save_error_map(frame, noisy_frame))
+            tifffile.imwrite(os.path.join(example_dir, f"frame_{i:03d}_pixelwise_psnr.tiff"),
+                             save_pixel_wise_psnr_plots(frame, noisy_frame))
 
         rec_video = np.array(rec_video)
         T = rec_video.shape[0]
