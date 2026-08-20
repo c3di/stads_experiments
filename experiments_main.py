@@ -41,13 +41,13 @@ logging.basicConfig(level=logging.INFO)
 # --------------------
 # display name -> (filename under DEFAULT_SAVE_DIR, total dwell time)
 GROUNDTRUTH_MAP = {
-    #"HYDRATION_ONE": ("HYDRATION_ONE", 25000),
-    #"LI_EXPULSION_ONE": ("LI_EXPULSION_ONE", 20000),
-    # "LI_EXPULSION_TWO": ("LI_EXPULSION_TWO", 20000),
-    #"SI_LITHIATION_ONE": ("SI_LITHIATION_ONE", 20000),
-    "EDS_AEROSPACE_ONE": ("EDS_AEROSPACE_ONE", 20000),
-    "EDS_AEROSPACE_TWO":   ("EDS_AEROSPACE_TWO", 20000),
-    #"TITANIUM_STRAIN_ONE": ("TITANIUM_STRAIN_ONE", 20000)
+    #"HYDRATION_ONE": ("Hydration.tif", 25000),
+    #"LI_EXPULSION_ONE": ("Li_Expulsion_1.tif", 20000),
+    # "LI_EXPULSION_TWO": ("Li_Expulsion_2.tif", 20000),
+    #"SI_LITHIATION_ONE": ("Si_Lithiation.tif", 20000),
+    "EDS_AEROSPACE_ONE": ("EDS_aerospace_one.tif", 20000),
+    "EDS_AEROSPACE_TWO":   ("EDS_aerospace_two.tif", 20000),
+    #"TITANIUM_STRAIN_ONE": ("Titanium_strain.tif", 20000)
 }
 
 GROUNDTRUTH_NAMES = list(GROUNDTRUTH_MAP.keys())
