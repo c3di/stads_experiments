@@ -9,3 +9,4 @@ setuptools~=80.8.0
 tqdm~=4.67.1
 requests~=2.32.3
 pandas~=2.3.3
+line_profiler~=5.0.2
