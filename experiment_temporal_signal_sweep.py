@@ -48,7 +48,8 @@ INTERPOL_METHOD = "cubic"
 HAS_TEMPORAL_SAMPLER = True
 HAS_TEMPORAL_RECONSTRUCTION = True
 ALPHA = 2.0
-ADAPTIVE_FRACTION = 0.1
+ADAPTIVE_FRACTION = 0.25
+MIN_DENSITY_GAMMA = 0.0
 
 TEMPORAL_METHODS = ["optical_flow", "temporal_variance"]
 
@@ -136,9 +137,9 @@ def main():
             future = executor.submit(
                 run_sampler, RUN_CONFIG, GT_NAME, SCANNED_PIXEL_PERCENT, "adaptive",
                 INTERPOL_METHOD, HAS_TEMPORAL_SAMPLER, HAS_TEMPORAL_RECONSTRUCTION,
-                ALPHA, ADAPTIVE_FRACTION,
-                _extra_sampler_kwargs(method, downscale, sigma),
-                (f"method_{method}", f"downscale_{downscale}", f"sigma_{sigma}"),
+                ALPHA, ADAPTIVE_FRACTION, MIN_DENSITY_GAMMA,
+                extra_sampler_kwargs=_extra_sampler_kwargs(method, downscale, sigma),
+                extra_path_parts=(f"method_{method}", f"downscale_{downscale}", f"sigma_{sigma}"),
             )
             futures[future] = (method, downscale, sigma)
 

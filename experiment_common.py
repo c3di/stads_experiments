@@ -146,6 +146,7 @@ class RunConfig:
 def run_sampler(config: RunConfig, gt_name, scanned_pixel_percent, sampler_type,
                 interpol_method="linear", has_temporal_sampler=True,
                 has_temporal_reconstruction=True, alpha=None, adaptive_fraction=0.0,
+                minDensityGamma=0.0,
                 extra_sampler_kwargs=None, extra_path_parts=()):
     """Build, run and record one AdaptiveSampler/StratifiedSampler task.
 
@@ -177,6 +178,7 @@ def run_sampler(config: RunConfig, gt_name, scanned_pixel_percent, sampler_type,
                 withTemporalSampling=has_temporal_sampler,
                 withTemporalReconstruction=has_temporal_reconstruction,
                 adaptiveRefinementFraction=adaptive_fraction,
+                minDensityGamma=minDensityGamma,
                 debugImages=config.debug_images_dict,
                 **(extra_sampler_kwargs or {}),
             )
@@ -234,6 +236,7 @@ def run_sampler(config: RunConfig, gt_name, scanned_pixel_percent, sampler_type,
                 "alpha": alpha if (sampler_type == "adaptive" and has_temporal_reconstruction) else None,
                 "beta": alpha if (sampler_type == "adaptive" and has_temporal_reconstruction) else None,
                 "adaptiveFraction": adaptive_fraction if sampler_type == "adaptive" else None,
+                "minDensityGamma": minDensityGamma if sampler_type == "adaptive" else None,
             })
 
         log(config.log_path,
@@ -260,7 +263,7 @@ def run_sampler(config: RunConfig, gt_name, scanned_pixel_percent, sampler_type,
 #: own columns to a copy of this list rather than to this one.
 BASE_CSV_FIELDNAMES = ["sampler", "withTemporalSampler", "withTemporalReconstruction", "gt_name",
                        "scanned_pixel_percent", "frame_idx", "PSNR", "SSIM", "alpha", "beta",
-                       "adaptiveFraction"]
+                       "adaptiveFraction", "minDensityGamma"]
 
 
 def write_results(results, csv_path, fieldnames, log_path):

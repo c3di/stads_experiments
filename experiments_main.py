@@ -46,6 +46,12 @@ TEMPORAL_RECONSTRUCTION_OPTIONS = [True]
 # NOTE: this multiplies the adaptive task count by len(ADAPTIVE_REFINEMENT_FRACTIONS).
 ADAPTIVE_REFINEMENT_FRACTIONS = [0.1] #[0.0, 0.1, 0.3, 0.5]
 
+# Probability mass mixed into every pdf as a uniform floor -- see
+# AdaptiveSampler's minDensityGamma / pdf_blend.apply_minimum_density. 0.0 is
+# the previous behaviour exactly (no floor).
+# NOTE: this multiplies the adaptive task count by len(MIN_DENSITY_GAMMAS).
+MIN_DENSITY_GAMMAS = [0.0]
+
 DEBUG_IMAGES_ENABLED = True
 DEBUG_IMAGES_DICT = (
     debug_images_dict({"reconstruction", "samples", "pdf"})
@@ -157,7 +163,8 @@ def run_low_dwell_time_sampler(gt_name, scanned_pixel_percent):
                 # batch containing only these rows would otherwise have no
                 # such column at all and raise KeyError.
                 "beta": None,
-                "adaptiveFraction": None
+                "adaptiveFraction": None,
+                "minDensityGamma": None
             })
 
         log(LOGFILE,
@@ -195,18 +202,19 @@ def main():
     # leading RunConfig), so the order here must match its signature:
     #   (gt_name, scanned_pixel_percent, sampler_type, interpol_method,
     #    has_temporal_sampler, has_temporal_reconstruction, alpha,
-    #    adaptive_fraction)
+    #    adaptive_fraction, min_density_gamma)
     for gt_name in GROUNDTRUTH_NAMES:
         for interpol_method in INTERPOLATION_METHODS:
             for use_temporal_sampler in TEMPORAL_SAMPLING_OPTIONS:
                 for use_temporal_reconstruction in TEMPORAL_RECONSTRUCTION_OPTIONS:
                     for scanned_pixel_percent in SCANNED_PIXELS_PERCENTAGES:
                         for adaptive_fraction in ADAPTIVE_REFINEMENT_FRACTIONS:
-                            if use_temporal_reconstruction:
-                                for alpha in ALPHAS:
-                                    sampler_tasks.append((gt_name, scanned_pixel_percent, "adaptive", interpol_method, use_temporal_sampler, use_temporal_reconstruction, alpha, adaptive_fraction))
-                            else:
-                                sampler_tasks.append((gt_name, scanned_pixel_percent, "adaptive", interpol_method, use_temporal_sampler, use_temporal_reconstruction, 1.0, adaptive_fraction)) # alpha is irrelevant when temporal reconstruction is disabled
+                            for min_density_gamma in MIN_DENSITY_GAMMAS:
+                                if use_temporal_reconstruction:
+                                    for alpha in ALPHAS:
+                                        sampler_tasks.append((gt_name, scanned_pixel_percent, "adaptive", interpol_method, use_temporal_sampler, use_temporal_reconstruction, alpha, adaptive_fraction, min_density_gamma))
+                                else:
+                                    sampler_tasks.append((gt_name, scanned_pixel_percent, "adaptive", interpol_method, use_temporal_sampler, use_temporal_reconstruction, 1.0, adaptive_fraction, min_density_gamma)) # alpha is irrelevant when temporal reconstruction is disabled
 
 
     # Add stratified sampler tasks (no temporal options, no alpha).
