@@ -1,5 +1,5 @@
 """Shared infrastructure between experiments_main.py and
-experiment_flow_smoothing_sweep.py -- ground-truth resolution, the
+experiment_temporal_signal_sweep.py -- ground-truth resolution, the
 AdaptiveSampler/StratifiedSampler run-and-record wrapper, CSV writing, and
 optional line-by-line profiling. Kept here rather than duplicated so the two
 scripts' sampler-construction logic can't drift apart.
@@ -21,6 +21,7 @@ from stads.debug_images.reconstruction import ReconstructionDebugImage
 from stads.debug_images.samples import SamplesDebugImage
 from stads.debug_images.pdf import PdfDebugImage
 from stads.debug_images.flow import FlowDebugImage
+from stads.debug_images.temporal_variance import TemporalVarianceDebugImage
 from stads.debug_images.error import ErrorMapDebugImage
 from stads.debug_images.psnr import PsnrMapDebugImage
 from stads.debug_images.ssim import SsimMapDebugImage
@@ -72,8 +73,8 @@ def log(logfile_path, msg: str):
 # --------------------
 ALL_DEBUG_IMAGE_KINDS = [
     ReconstructionDebugImage.kind, SamplesDebugImage.kind, PdfDebugImage.kind,
-    FlowDebugImage.kind, ErrorMapDebugImage.kind, PsnrMapDebugImage.kind,
-    SsimMapDebugImage.kind, TriangulationDebugImage.kind,
+    FlowDebugImage.kind, TemporalVarianceDebugImage.kind, ErrorMapDebugImage.kind,
+    PsnrMapDebugImage.kind, SsimMapDebugImage.kind, TriangulationDebugImage.kind,
 ]
 
 
