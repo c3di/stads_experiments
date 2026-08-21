@@ -19,7 +19,9 @@ from stads.video_downloader import DEFAULT_SAVE_DIR
 
 from stads.debug_images.reconstruction import ReconstructionDebugImage
 from stads.debug_images.samples import SamplesDebugImage
-from stads.debug_images.pdf import PdfDebugImage
+from stads.debug_images.pdf import (
+    PdfDebugImage, PdfSpatialContributionDebugImage, PdfTemporalContributionDebugImage,
+)
 from stads.debug_images.flow import FlowDebugImage
 from stads.debug_images.temporal_variance import TemporalVarianceDebugImage
 from stads.debug_images.error import ErrorMapDebugImage
@@ -73,6 +75,7 @@ def log(logfile_path, msg: str):
 # --------------------
 ALL_DEBUG_IMAGE_KINDS = [
     ReconstructionDebugImage.kind, SamplesDebugImage.kind, PdfDebugImage.kind,
+    PdfSpatialContributionDebugImage.kind, PdfTemporalContributionDebugImage.kind,
     FlowDebugImage.kind, TemporalVarianceDebugImage.kind, ErrorMapDebugImage.kind,
     PsnrMapDebugImage.kind, SsimMapDebugImage.kind, TriangulationDebugImage.kind,
 ]

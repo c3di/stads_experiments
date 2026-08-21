@@ -4,18 +4,18 @@ src/stads/pdfsampling/optical_flow.py) and temporalMethod="temporal_variance"
 (.../pdfsampling/temporal_variance.py) -- each over its own
 downscale x sigma grid.
 
-This deliberately does NOT compare PDFs against each other -- that
-comparison lives in stads_adaptive_sampler's tests/pdfsampling/
-test_pdf_from_optical_flow.py and test_pdf_from_temporal_variance.py as
-numeric-equivalence checks against each method's own pre-decimation
-algorithm. This experiment instead looks at what each (method, downscale,
-sigma) combination does downstream: the actual sampling pattern and
-reconstructed frames the sampler produces, since that is what the algorithm
-is actually evaluated on. Per-frame PSNR/SSIM go to
-temporal_signal_sweep_results.csv; the "reconstruction", "samples" and
-"temporal_variance" debug images (off: "pdf", since that's the thing this
-experiment is explicitly not judging by) are written per combination for
-visual inspection.
+This does not *rely on* comparing PDFs against each other to draw its main
+conclusion -- that numeric equivalence lives in stads_adaptive_sampler's
+tests/pdfsampling/test_pdf_from_optical_flow.py and
+test_pdf_from_temporal_variance.py, checked against each method's own
+pre-decimation algorithm. This experiment instead looks primarily at what
+each (method, downscale, sigma) combination does downstream: the actual
+sampling pattern and reconstructed frames the sampler produces, since that
+is what the algorithm is actually evaluated on. Per-frame PSNR/SSIM go to
+temporal_signal_sweep_results.csv; "reconstruction", "samples",
+"temporal_variance", "flow" and "pdf" (both the blended pdf and, if enabled
+below, its unblended pdf_spatial/pdf_temporal contributions) are written per
+combination for visual inspection.
 
 Runs the same single dataset/sparsity/alpha/adaptive-fraction configuration
 experiments_main.py is currently pinned to -- this sweeps only the temporal-
@@ -43,7 +43,7 @@ logging.basicConfig(level=logging.INFO)
 # sweeps only TEMPORAL_METHODS/DOWNSCALE_FACTORS/SIGMAS on top of it, not
 # every other axis.
 GT_NAME = GROUNDTRUTH_NAMES[0]
-SCANNED_PIXEL_PERCENT = 0.5
+SCANNED_PIXEL_PERCENT = 1.0
 INTERPOL_METHOD = "cubic"
 HAS_TEMPORAL_SAMPLER = True
 HAS_TEMPORAL_RECONSTRUCTION = True
@@ -70,12 +70,28 @@ LOGFILE = "temporal_signal_sweep_log.txt"
 CSV_PATH = os.path.join(output_dir, "temporal_signal_sweep_results.csv")
 STANDARD_WORKER_POOL_SIZE = 6
 
-# reconstruction + samples + temporal_variance: this experiment judges the
-# downstream effect on the sampling pattern and reconstruction (plus the
-# variance signal itself, for temporal_variance runs), not the pdf -- see
-# the module docstring. temporal_variance stays harmless to enable for
-# optical_flow runs: nothing ever writes to it on that path.
-DEBUG_IMAGES_DICT = debug_images_dict({"reconstruction", "samples", "temporal_variance"})
+# reconstruction + samples + temporal_variance + flow + pdf (+ its
+# pdf_spatial/pdf_temporal unblended contributions): lets this experiment
+# judge the downstream effect on the sampling pattern and reconstruction,
+# while also being able to inspect the temporal signal and the pdf it drove
+# directly. temporal_variance/flow/pdf_temporal stay harmless to enable
+# regardless of temporalMethod: whichever one didn't run this frame simply
+# never writes a page for it (see PdfTemporalContributionDebugImage).
+#
+# To enable a further debug output, add its kind name to this set --
+# debug_images_dict() turns every other known kind explicitly off (see
+# experiment_common.ALL_DEBUG_IMAGE_KINDS for the complete list: currently
+# "reconstruction", "samples", "pdf", "pdf_spatial", "pdf_temporal", "flow",
+# "temporal_variance", "error", "psnr", "ssim", "triangulation"). Example,
+# uncommented, adds the per-frame pixel-wise PSNR heatmap on top of the ones
+# already enabled below:
+#
+#   DEBUG_IMAGES_DICT = debug_images_dict(
+#       {"reconstruction", "samples", "temporal_variance", "flow", "pdf",
+#        "pdf_spatial", "pdf_temporal", "psnr"})
+DEBUG_IMAGES_DICT = debug_images_dict(
+    {"reconstruction", "samples", "temporal_variance", "flow", "pdf",
+     "pdf_spatial", "pdf_temporal"})
 
 RUN_CONFIG = RunConfig(
     output_dir=output_dir,
