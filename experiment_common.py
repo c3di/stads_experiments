@@ -97,30 +97,34 @@ LINE_PROFILE_ENABLED = os.environ.get("STADS_LINE_PROFILE") == "1"
 
 
 def make_line_profiler():
-    """A LineProfiler instrumented for the pdf/overlay_masks phases (see
-    stads.py's [PHASE-TOTAL] log) -- the functions profiled during the
-    optical-flow performance investigation."""
+    """A LineProfiler instrumented for the "pdf" phase's full call chain (see
+    stads.py's [PHASE-TOTAL] log) -- both the pdf computation itself
+    (blend.py, pdf_from_signal.py, optical_flow.py, temporal_variance.py) and
+    its debug-image rendering/write cost (pdf/pdf_spatial/pdf_temporal all
+    share _record_pdf), so the two show up separately in the report."""
     from line_profiler import LineProfiler
     from stads.pdfsampling import blend as pdf_blend
-    from stads.pdfsampling.pdf_from_signal import compute_pdf_from_gradients_image, percentile_norm
+    from stads.pdfsampling.pdf_from_signal import compute_pdf_from_gradients_image
     from stads.pdfsampling.optical_flow import compute_pdf_from_optical_flow
+    from stads.pdfsampling.temporal_variance import compute_pdf_from_temporal_variance
     from stads.debug_images.base import DebugImage
-    from stads.debug_images.samples import _build_sampling_mask
-    from stads.debug_images.rendering import overlay_sampling_masks, overlay_colour_map, to_uint8_rgb
+    from stads.debug_images.pdf import _PdfMapDebugImage
+    from stads.debug_images.rendering import overlay_colour_map, to_uint8_rgb
 
     profiler = LineProfiler()
     for fn in (
+        AdaptiveSampler._record_pdf,
         pdf_blend.spatiotemporal,
+        pdf_blend.spatiotemporal_variance,
         pdf_blend.spatial_only,
+        pdf_blend.apply_minimum_density,
         compute_pdf_from_gradients_image,
-        percentile_norm,
         compute_pdf_from_optical_flow,
+        compute_pdf_from_temporal_variance,
         DebugImage.process,
         DebugImage.write,
-        PdfDebugImage._process,
-        SamplesDebugImage._process,
-        _build_sampling_mask,
-        overlay_sampling_masks,
+        _PdfMapDebugImage._process,
+        PdfTemporalContributionDebugImage._process,
         overlay_colour_map,
         to_uint8_rgb,
     ):

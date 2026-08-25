@@ -54,7 +54,7 @@ MIN_DENSITY_GAMMAS = [0.0]
 
 DEBUG_IMAGES_ENABLED = True
 DEBUG_IMAGES_DICT = (
-    debug_images_dict({"reconstruction", "samples", "pdf"})
+    debug_images_dict({"reconstruction", "samples"})
     if DEBUG_IMAGES_ENABLED else None
 )
 

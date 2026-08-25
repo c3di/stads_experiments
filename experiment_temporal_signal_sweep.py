@@ -49,20 +49,20 @@ HAS_TEMPORAL_SAMPLER = True
 HAS_TEMPORAL_RECONSTRUCTION = True
 ALPHA = 2.0
 ADAPTIVE_FRACTION = 0.25
-MIN_DENSITY_GAMMA = 0.0
+MIN_DENSITY_GAMMA = 0.25
 
 TEMPORAL_METHODS = ["optical_flow", "temporal_variance"]
 
 # downscale=1 is both methods' own "no decimation"; 2/4/8 group 2x2/4x4/8x8
 # pixels respectively before blurring the temporal signal into a PDF.
-DOWNSCALE_FACTORS = [1, 2, 4, 8]
+DOWNSCALE_FACTORS = [1, 2, 4]
 
 # sigma=0 skips the Gaussian entirely. Applied at whichever resolution the
 # paired downscale produces, not auto-rescaled -- see optical_flow.py's
 # PDF_SMOOTHING_SIGMA and temporal_variance.py's PDF_TEMPORAL_VARIANCE_SIGMA
 # docstrings for why their *library* defaults differ (one is tuned, one
 # isn't yet -- this sweep is how temporal_variance's would get tuned).
-SIGMAS = [0, 1.25, 1.5, 2, 4, 8]
+SIGMAS = [0, 2, 4, 8]
 
 limit_number_of_frames_to = 500
 output_dir = "plots"
@@ -91,8 +91,7 @@ STANDARD_WORKER_POOL_SIZE = 6
 #       {"reconstruction", "samples", "temporal_variance", "flow", "pdf",
 #        "pdf_spatial", "pdf_temporal", "psnr"})
 DEBUG_IMAGES_DICT = debug_images_dict(
-    {"reconstruction", "samples", "temporal_variance", "flow", "pdf",
-     "pdf_spatial", "pdf_temporal"})
+    {"reconstruction", "samples"})
 
 RUN_CONFIG = RunConfig(
     output_dir=output_dir,
