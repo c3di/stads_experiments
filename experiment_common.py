@@ -14,6 +14,7 @@ from typing import Optional
 import pandas as pd
 
 from stads.stads import AdaptiveSampler
+from stads.pdfsampling.blend import DEFAULT_TEMPORAL_WEIGHT
 from stads.stratified_sampler import StratifiedSampler
 from stads.video_downloader import DEFAULT_SAVE_DIR
 
@@ -32,7 +33,8 @@ from stads.debug_images.triangulation import TriangulationDebugImage
 # display name -> (filename under DEFAULT_SAVE_DIR, total dwell time)
 GROUNDTRUTH_MAP = {
     #"HYDRATION_ONE": ("Hydration.tif", 25000),
-    "LI_EXPULSION_ONE": ("Li_Expulsion_1.tif", 20000),
+    "LI_EXPULSION_ONE_50FPS": ("Li_Expulsion_1_50fps.tif", 20000),
+    "LI_EXPULSION_ONE": ("Li_Expulsion_1.tif", 20000),    
     # "LI_EXPULSION_TWO": ("Li_Expulsion_2.tif", 20000),
     #"SI_LITHIATION_ONE": ("Si_Lithiation.tif", 20000),
     #"EDS_AEROSPACE_ONE": ("EDS_aerospace_one.tif", 20000),
@@ -150,15 +152,22 @@ class RunConfig:
 def run_sampler(config: RunConfig, gt_name, scanned_pixel_percent, sampler_type,
                 interpol_method="linear", has_temporal_sampler=True,
                 has_temporal_reconstruction=True, alpha=None, adaptive_fraction=0.0,
-                minDensityGamma=0.0,
+                minDensityGamma=0.0, temporal_weight=DEFAULT_TEMPORAL_WEIGHT,
+                pdf_temporal_downscale=None, pdf_temporal_sigma=None,
                 extra_sampler_kwargs=None, extra_path_parts=()):
     """Build, run and record one AdaptiveSampler/StratifiedSampler task.
 
+    temporal_weight: AdaptiveSampler's fixed spatial/temporal pdf blend
+    ratio (0=spatial only, 1=temporal only). pdf_temporal_downscale/
+    pdf_temporal_sigma: the shared decimate/blur shaping applied to
+    whichever temporal signal is active (optical flow or temporal
+    variance) before blending -- None uses AdaptiveSampler's own default.
+
     extra_sampler_kwargs is forwarded to AdaptiveSampler's constructor only
     (StratifiedSampler tasks ignore it) -- lets a caller like
-    experiment_flow_smoothing_sweep.py vary a knob this function doesn't know
-    about. extra_path_parts is appended to the run's output directory, for
-    the same reason.
+    experiment_temporal_signal_sweep.py vary a knob this function doesn't
+    know about (e.g. temporalMethod). extra_path_parts is appended to the
+    run's output directory, for the same reason.
     """
     local_results = []
     t_overall_start = time.perf_counter()
@@ -183,6 +192,9 @@ def run_sampler(config: RunConfig, gt_name, scanned_pixel_percent, sampler_type,
                 withTemporalReconstruction=has_temporal_reconstruction,
                 adaptiveRefinementFraction=adaptive_fraction,
                 minDensityGamma=minDensityGamma,
+                temporalWeight=temporal_weight,
+                pdfTemporalDownscale=pdf_temporal_downscale,
+                pdfTemporalSigma=pdf_temporal_sigma,
                 debugImages=config.debug_images_dict,
                 **(extra_sampler_kwargs or {}),
             )

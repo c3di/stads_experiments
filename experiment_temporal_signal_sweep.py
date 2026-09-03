@@ -58,10 +58,9 @@ TEMPORAL_METHODS = ["optical_flow", "temporal_variance"]
 DOWNSCALE_FACTORS = [1, 2, 4]
 
 # sigma=0 skips the Gaussian entirely. Applied at whichever resolution the
-# paired downscale produces, not auto-rescaled -- see optical_flow.py's
-# PDF_SMOOTHING_SIGMA and temporal_variance.py's PDF_TEMPORAL_VARIANCE_SIGMA
-# docstrings for why their *library* defaults differ (one is tuned, one
-# isn't yet -- this sweep is how temporal_variance's would get tuned).
+# paired downscale produces, not auto-rescaled -- see
+# stads.pdfsampling.pdf_temporal_shaping's PDF_TEMPORAL_DOWNSCALE/_SIGMA,
+# the shared library defaults both methods now use.
 SIGMAS = [0, 2, 4, 8]
 
 limit_number_of_frames_to = 500
@@ -104,16 +103,11 @@ RUN_CONFIG = RunConfig(
 CSV_FIELDNAMES = BASE_CSV_FIELDNAMES + ["temporalMethod", "downscale", "sigma"]
 
 
-def _extra_sampler_kwargs(method, downscale, sigma):
-    """method's downscale/sigma expressed as the constructor kwargs
-    AdaptiveSampler actually takes -- the two methods use differently-named
-    parameters (flowPdf* vs temporalVariancePdf*) since they tune different
-    functions, even though this sweep treats them as the same axis."""
-    if method == "optical_flow":
-        return {"flowPdfDownscale": downscale, "flowPdfSigma": sigma}
-    return {"temporalMethod": method,
-           "temporalVariancePdfDownscale": downscale,
-           "temporalVariancePdfSigma": sigma}
+def _extra_sampler_kwargs(method):
+    """temporalMethod is the only knob run_sampler doesn't already expose by
+    name -- downscale/sigma are the same pdf_temporal_downscale/
+    pdf_temporal_sigma parameters regardless of which method is active."""
+    return {} if method == "optical_flow" else {"temporalMethod": method}
 
 
 def main():
@@ -137,7 +131,8 @@ def main():
                 run_sampler, RUN_CONFIG, GT_NAME, SCANNED_PIXEL_PERCENT, "adaptive",
                 INTERPOL_METHOD, HAS_TEMPORAL_SAMPLER, HAS_TEMPORAL_RECONSTRUCTION,
                 ALPHA, ADAPTIVE_FRACTION, MIN_DENSITY_GAMMA,
-                extra_sampler_kwargs=_extra_sampler_kwargs(method, downscale, sigma),
+                pdf_temporal_downscale=downscale, pdf_temporal_sigma=sigma,
+                extra_sampler_kwargs=_extra_sampler_kwargs(method),
                 extra_path_parts=(f"method_{method}", f"downscale_{downscale}", f"sigma_{sigma}"),
             )
             futures[future] = (method, downscale, sigma)
