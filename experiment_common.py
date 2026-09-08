@@ -13,7 +13,10 @@ from typing import Optional
 
 import pandas as pd
 
-from stads.stads import AdaptiveSampler
+from stads.stads import (
+    AdaptiveSampler, DEFAULT_TEMPORAL_RESIDUAL_CUTOFF,
+    DEFAULT_TEMPORAL_RESIDUAL_CONFIDENCE_SCALE,
+)
 from stads.pdfsampling.blend import DEFAULT_TEMPORAL_WEIGHT
 from stads.stratified_sampler import StratifiedSampler
 from stads.video_downloader import DEFAULT_SAVE_DIR
@@ -33,8 +36,9 @@ from stads.debug_images.triangulation import TriangulationDebugImage
 # display name -> (filename under DEFAULT_SAVE_DIR, total dwell time)
 GROUNDTRUTH_MAP = {
     #"HYDRATION_ONE": ("Hydration.tif", 25000),
-    "LI_EXPULSION_ONE_50FPS": ("Li_Expulsion_1_50fps.tif", 20000),
-    "LI_EXPULSION_ONE": ("Li_Expulsion_1.tif", 20000),    
+    # "LI_EXPULSION_ONE_50FPS": ("Li_Expulsion_1_50fps.tif", 20000),
+    "LI_EXPULSION_ONE_10FPS": ("Li_Expulsion_1_10fps.tif", 20000)
+    # "LI_EXPULSION_ONE": ("Li_Expulsion_1.tif", 20000),    
     # "LI_EXPULSION_TWO": ("Li_Expulsion_2.tif", 20000),
     #"SI_LITHIATION_ONE": ("Si_Lithiation.tif", 20000),
     #"EDS_AEROSPACE_ONE": ("EDS_aerospace_one.tif", 20000),
@@ -152,22 +156,41 @@ class RunConfig:
 def run_sampler(config: RunConfig, gt_name, scanned_pixel_percent, sampler_type,
                 interpol_method="linear", has_temporal_sampler=True,
                 has_temporal_reconstruction=True, alpha=None, adaptive_fraction=0.0,
-                minDensityGamma=0.0, temporal_weight=DEFAULT_TEMPORAL_WEIGHT,
+                minDensityGamma=0.0, temporal_method="optical_flow",
+                # temporal_residual_cutoff/temporal_residual_confidence_scale
+                # sit here, immediately after temporal_method:
+                # experiments_main.py's sampler_tasks tuples are unpacked
+                # positionally and end at this run, so a new sweep axis has
+                # to land exactly here, not after the keyword-only-in-
+                # practice params below (see the tuple-order comment at
+                # that call site).
+                temporal_residual_cutoff=DEFAULT_TEMPORAL_RESIDUAL_CUTOFF,
+                temporal_residual_confidence_scale=DEFAULT_TEMPORAL_RESIDUAL_CONFIDENCE_SCALE,
+                temporal_weight=DEFAULT_TEMPORAL_WEIGHT,
                 pdf_temporal_downscale=None, pdf_temporal_sigma=None,
                 extra_sampler_kwargs=None, extra_path_parts=()):
     """Build, run and record one AdaptiveSampler/StratifiedSampler task.
 
+    temporal_method: AdaptiveSampler's temporalMethod -- "optical_flow" or
+    "temporal_variance", the two interchangeable temporal signals blended
+    into the pdf (ignored for sampler_type="stratified", which has no
+    temporal signal at all).
+
     temporal_weight: AdaptiveSampler's fixed spatial/temporal pdf blend
     ratio (0=spatial only, 1=temporal only). pdf_temporal_downscale/
     pdf_temporal_sigma: the shared decimate/blur shaping applied to
-    whichever temporal signal is active (optical flow or temporal
-    variance) before blending -- None uses AdaptiveSampler's own default.
+    optical_flow's temporal signal before blending -- None uses
+    AdaptiveSampler's own default. temporal_residual_cutoff/
+    temporal_residual_confidence_scale: AdaptiveSampler's
+    temporalResidualCutoff/temporalResidualConfidenceScale, only meaningful
+    for temporal_method="temporal_variance" (its sparse point-residual
+    signal -- see stads.stads.DEFAULT_TEMPORAL_RESIDUAL_CUTOFF/
+    _CONFIDENCE_SCALE's own comments).
 
     extra_sampler_kwargs is forwarded to AdaptiveSampler's constructor only
-    (StratifiedSampler tasks ignore it) -- lets a caller like
-    experiment_temporal_signal_sweep.py vary a knob this function doesn't
-    know about (e.g. temporalMethod). extra_path_parts is appended to the
-    run's output directory, for the same reason.
+    (StratifiedSampler tasks ignore it) -- lets a caller vary a knob this
+    function doesn't otherwise expose by name. extra_path_parts is appended
+    to the run's output directory, for the same reason.
     """
     local_results = []
     t_overall_start = time.perf_counter()
@@ -175,8 +198,11 @@ def run_sampler(config: RunConfig, gt_name, scanned_pixel_percent, sampler_type,
     log(config.log_path,
         f"Starting: {sampler_type} | interpol={interpol_method} | {gt_name} | "
         f"S={scanned_pixel_percent}% | SamplerTemporal={has_temporal_sampler}| "
-        f"ReconstructionTemporal={has_temporal_reconstruction} | alpha={alpha} | "
-        f"adaptive={adaptive_fraction}")
+        f"ReconstructionTemporal={has_temporal_reconstruction} | "
+        f"temporalMethod={temporal_method} | "
+        f"temporalResidualCutoff={temporal_residual_cutoff} | "
+        f"temporalResidualConfidenceScale={temporal_residual_confidence_scale} | "
+        f"alpha={alpha} | adaptive={adaptive_fraction}")
     try:
         ground_truth_path = _ground_truth_path(gt_name)
         if sampler_type == "adaptive":
@@ -192,9 +218,12 @@ def run_sampler(config: RunConfig, gt_name, scanned_pixel_percent, sampler_type,
                 withTemporalReconstruction=has_temporal_reconstruction,
                 adaptiveRefinementFraction=adaptive_fraction,
                 minDensityGamma=minDensityGamma,
+                temporalMethod=temporal_method,
                 temporalWeight=temporal_weight,
                 pdfTemporalDownscale=pdf_temporal_downscale,
                 pdfTemporalSigma=pdf_temporal_sigma,
+                temporalResidualCutoff=temporal_residual_cutoff,
+                temporalResidualConfidenceScale=temporal_residual_confidence_scale,
                 debugImages=config.debug_images_dict,
                 **(extra_sampler_kwargs or {}),
             )
@@ -213,10 +242,17 @@ def run_sampler(config: RunConfig, gt_name, scanned_pixel_percent, sampler_type,
         # adaptive_fraction likewise, or a refined run would overwrite the
         # unrefined one it is meant to be compared against. extra_path_parts
         # does the same job for whatever else a caller is sweeping.
+        # temporalResidualCutoff is included unconditionally (like alpha
+        # above, irrelevant-but-present for some combinations) rather than
+        # only when temporal_method=="temporal_variance", so a sweep over it
+        # can't collide two runs into the same directory.
         example_dir = os.path.join(
             config.output_dir, "examples", sampler_type, f"interpol_{interpol_method}",
             f"sparsity_{scanned_pixel_percent}", gt_name,
             f"sampler_{has_temporal_sampler}_reconstruction_{has_temporal_reconstruction}",
+            f"temporalMethod_{temporal_method}",
+            f"temporalResidualCutoff_{temporal_residual_cutoff}",
+            f"temporalResidualConfidenceScale_{temporal_residual_confidence_scale}",
             f"alpha_{alpha}", f"adaptive_{adaptive_fraction}", *extra_path_parts)
         os.makedirs(example_dir, exist_ok=True)
 
@@ -253,6 +289,17 @@ def run_sampler(config: RunConfig, gt_name, scanned_pixel_percent, sampler_type,
                 "beta": alpha if (sampler_type == "adaptive" and has_temporal_reconstruction) else None,
                 "adaptiveFraction": adaptive_fraction if sampler_type == "adaptive" else None,
                 "minDensityGamma": minDensityGamma if sampler_type == "adaptive" else None,
+                "temporalMethod": temporal_method if (sampler_type == "adaptive" and has_temporal_sampler) else None,
+                "temporalResidualCutoff": (
+                    temporal_residual_cutoff
+                    if (sampler_type == "adaptive" and has_temporal_sampler
+                        and temporal_method == "temporal_variance")
+                    else None),
+                "temporalResidualConfidenceScale": (
+                    temporal_residual_confidence_scale
+                    if (sampler_type == "adaptive" and has_temporal_sampler
+                        and temporal_method == "temporal_variance")
+                    else None),
             })
 
         log(config.log_path,
@@ -279,7 +326,8 @@ def run_sampler(config: RunConfig, gt_name, scanned_pixel_percent, sampler_type,
 #: own columns to a copy of this list rather than to this one.
 BASE_CSV_FIELDNAMES = ["sampler", "withTemporalSampler", "withTemporalReconstruction", "gt_name",
                        "scanned_pixel_percent", "frame_idx", "PSNR", "SSIM", "alpha", "beta",
-                       "adaptiveFraction", "minDensityGamma"]
+                       "adaptiveFraction", "minDensityGamma", "temporalMethod",
+                       "temporalResidualCutoff", "temporalResidualConfidenceScale"]
 
 
 def write_results(results, csv_path, fieldnames, log_path):

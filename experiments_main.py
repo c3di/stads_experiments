@@ -32,33 +32,24 @@ logging.basicConfig(level=logging.INFO)
 # NOTE: this multiplies the adaptive task count by len(INTERPOLATION_METHODS).
 INTERPOLATION_METHODS = ["cubic"]
 
-SCANNED_PIXELS_PERCENTAGES = [0.5] # [0.05, 0.1, 0.5, 2.0, 5.0, 7.0]
-ALPHAS = [2.0] #[0.25,0.5, 1.0, 2.0, 4.0]#list(np.arange(0.5, 5.5, 0.5))
-BETAS = []
+SCANNED_PIXELS_PERCENTAGES = [1.0]
+ALPHAS = [0.25, 0.5, 1.0]
 TEMPORAL_SAMPLING_OPTIONS = [True]
 TEMPORAL_RECONSTRUCTION_OPTIONS = [True]
 
-# True adaptive sampling: the share of each frame's budget held back from the
-# PDF draw and spent inside the frame, subdividing the triangulation edges this
-# frame's own samples say are worst. 0.0 is the previous behaviour exactly.
-# The total number of acquired pixels is unchanged either way, so runs at
-# different fractions are comparable at equal budget.
-# NOTE: this multiplies the adaptive task count by len(ADAPTIVE_REFINEMENT_FRACTIONS).
-ADAPTIVE_REFINEMENT_FRACTIONS = [0.1] #[0.0, 0.1, 0.3, 0.5]
-
-# Probability mass mixed into every pdf as a uniform floor -- see
-# AdaptiveSampler's minDensityGamma / pdf_blend.apply_minimum_density. 0.0 is
-# the previous behaviour exactly (no floor).
-# NOTE: this multiplies the adaptive task count by len(MIN_DENSITY_GAMMAS).
-MIN_DENSITY_GAMMAS = [0.0]
+TEMPORAL_METHODS = ["temporal_variance", "optical_flow"]  # ["optical_flow", "temporal_variance"]
+TEMPORAL_RESIDUAL_CUTOFFS = [12.0, 25.0, 50.0]
+TEMPORAL_RESIDUAL_CONFIDENCE_SCALES = [100.0, 250.0, 500.0]
+ADAPTIVE_REFINEMENT_FRACTIONS = [0.3] #[0.0, 0.1, 0.3, 0.5]
+MIN_DENSITY_GAMMAS = [0.1]
 
 DEBUG_IMAGES_ENABLED = True
 DEBUG_IMAGES_DICT = (
-    debug_images_dict({"reconstruction", "samples"})
+        debug_images_dict({"reconstruction", "samples", "pdf", "pdf_spatial", "pdf_temporal", "flow", "temporal_variance"})
     if DEBUG_IMAGES_ENABLED else None
 )
 
-limit_number_of_frames_to = 500
+limit_number_of_frames_to = None
 output_dir = "plots"
 os.makedirs(output_dir, exist_ok=True)
 LOGFILE = "script_log.txt"
@@ -164,7 +155,10 @@ def run_low_dwell_time_sampler(gt_name, scanned_pixel_percent):
                 # such column at all and raise KeyError.
                 "beta": None,
                 "adaptiveFraction": None,
-                "minDensityGamma": None
+                "minDensityGamma": None,
+                "temporalMethod": None,
+                "temporalResidualCutoff": None,
+                "temporalResidualConfidenceScale": None,
             })
 
         log(LOGFILE,
@@ -202,19 +196,35 @@ def main():
     # leading RunConfig), so the order here must match its signature:
     #   (gt_name, scanned_pixel_percent, sampler_type, interpol_method,
     #    has_temporal_sampler, has_temporal_reconstruction, alpha,
-    #    adaptive_fraction, min_density_gamma)
+    #    adaptive_fraction, min_density_gamma, temporal_method,
+    #    temporal_residual_cutoff, temporal_residual_confidence_scale)
     for gt_name in GROUNDTRUTH_NAMES:
         for interpol_method in INTERPOLATION_METHODS:
             for use_temporal_sampler in TEMPORAL_SAMPLING_OPTIONS:
                 for use_temporal_reconstruction in TEMPORAL_RECONSTRUCTION_OPTIONS:
-                    for scanned_pixel_percent in SCANNED_PIXELS_PERCENTAGES:
-                        for adaptive_fraction in ADAPTIVE_REFINEMENT_FRACTIONS:
-                            for min_density_gamma in MIN_DENSITY_GAMMAS:
-                                if use_temporal_reconstruction:
-                                    for alpha in ALPHAS:
-                                        sampler_tasks.append((gt_name, scanned_pixel_percent, "adaptive", interpol_method, use_temporal_sampler, use_temporal_reconstruction, alpha, adaptive_fraction, min_density_gamma))
-                                else:
-                                    sampler_tasks.append((gt_name, scanned_pixel_percent, "adaptive", interpol_method, use_temporal_sampler, use_temporal_reconstruction, 1.0, adaptive_fraction, min_density_gamma)) # alpha is irrelevant when temporal reconstruction is disabled
+                    # temporalMethod only affects behaviour when
+                    # use_temporal_sampler is True -- don't multiply the task
+                    # count by it for a run where it would be a no-op.
+                    for temporal_method in (TEMPORAL_METHODS if use_temporal_sampler
+                                            else TEMPORAL_METHODS[:1]):
+                        # Likewise, temporalResidualCutoff/
+                        # temporalResidualConfidenceScale only affect
+                        # temporal_variance -- don't multiply the task count
+                        # by them for optical_flow (or no temporal sampler).
+                        for temporal_residual_cutoff in (
+                                TEMPORAL_RESIDUAL_CUTOFFS if temporal_method == "temporal_variance"
+                                else TEMPORAL_RESIDUAL_CUTOFFS[:1]):
+                            for temporal_residual_confidence_scale in (
+                                    TEMPORAL_RESIDUAL_CONFIDENCE_SCALES if temporal_method == "temporal_variance"
+                                    else TEMPORAL_RESIDUAL_CONFIDENCE_SCALES[:1]):
+                                for scanned_pixel_percent in SCANNED_PIXELS_PERCENTAGES:
+                                    for adaptive_fraction in ADAPTIVE_REFINEMENT_FRACTIONS:
+                                        for min_density_gamma in MIN_DENSITY_GAMMAS:
+                                            if use_temporal_reconstruction:
+                                                for alpha in ALPHAS:
+                                                    sampler_tasks.append((gt_name, scanned_pixel_percent, "adaptive", interpol_method, use_temporal_sampler, use_temporal_reconstruction, alpha, adaptive_fraction, min_density_gamma, temporal_method, temporal_residual_cutoff, temporal_residual_confidence_scale))
+                                            else:
+                                                sampler_tasks.append((gt_name, scanned_pixel_percent, "adaptive", interpol_method, use_temporal_sampler, use_temporal_reconstruction, 1.0, adaptive_fraction, min_density_gamma, temporal_method, temporal_residual_cutoff, temporal_residual_confidence_scale)) # alpha is irrelevant when temporal reconstruction is disabled
 
 
     # Add stratified sampler tasks (no temporal options, no alpha).

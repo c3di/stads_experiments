@@ -100,14 +100,7 @@ RUN_CONFIG = RunConfig(
     line_profile_enabled=LINE_PROFILE_ENABLED,
 )
 
-CSV_FIELDNAMES = BASE_CSV_FIELDNAMES + ["temporalMethod", "downscale", "sigma"]
-
-
-def _extra_sampler_kwargs(method):
-    """temporalMethod is the only knob run_sampler doesn't already expose by
-    name -- downscale/sigma are the same pdf_temporal_downscale/
-    pdf_temporal_sigma parameters regardless of which method is active."""
-    return {} if method == "optical_flow" else {"temporalMethod": method}
+CSV_FIELDNAMES = BASE_CSV_FIELDNAMES + ["downscale", "sigma"]
 
 
 def main():
@@ -131,9 +124,9 @@ def main():
                 run_sampler, RUN_CONFIG, GT_NAME, SCANNED_PIXEL_PERCENT, "adaptive",
                 INTERPOL_METHOD, HAS_TEMPORAL_SAMPLER, HAS_TEMPORAL_RECONSTRUCTION,
                 ALPHA, ADAPTIVE_FRACTION, MIN_DENSITY_GAMMA,
+                temporal_method=method,
                 pdf_temporal_downscale=downscale, pdf_temporal_sigma=sigma,
-                extra_sampler_kwargs=_extra_sampler_kwargs(method),
-                extra_path_parts=(f"method_{method}", f"downscale_{downscale}", f"sigma_{sigma}"),
+                extra_path_parts=(f"downscale_{downscale}", f"sigma_{sigma}"),
             )
             futures[future] = (method, downscale, sigma)
 
@@ -143,7 +136,6 @@ def main():
                 result = future.result()
                 if result:
                     for row in result:
-                        row["temporalMethod"] = method
                         row["downscale"] = downscale
                         row["sigma"] = sigma
                     write_results(result, CSV_PATH, CSV_FIELDNAMES, LOGFILE)
