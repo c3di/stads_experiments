@@ -39,11 +39,11 @@ GROUNDTRUTH_MAP = {
     # "LI_EXPULSION_ONE_50FPS": ("Li_Expulsion_1_50fps.tif", 20000),
     "LI_EXPULSION_ONE_10FPS": ("Li_Expulsion_1x10.tif", 20000),
     "LI_EXPULSION_ONE_ORIGINAL": ("Li_Expulsion_1.tif", 20000),    
-     "LI_EXPULSION_TWO": ("Li_Expulsion_2.tif", 20000),
+    # "LI_EXPULSION_TWO": ("Li_Expulsion_2.tif", 20000),
     #"SI_LITHIATION_ONE": ("Si_Lithiation.tif", 20000),
-    "EDS_AEROSPACE_ONE": ("EDS_aerospace_one.tif", 20000),
-    "EDS_AEROSPACE_TWO":   ("EDS_aerospace_two.tif", 20000),
-    "TITANIUM_STRAIN_ONE": ("Titanium_strain.tif", 20000)
+    #"EDS_AEROSPACE_ONE": ("EDS_aerospace_one.tif", 20000),
+    #"EDS_AEROSPACE_TWO":   ("EDS_aerospace_two.tif", 20000),
+    #"TITANIUM_STRAIN_ONE": ("Titanium_strain.tif", 20000)
 }
 
 GROUNDTRUTH_NAMES = list(GROUNDTRUTH_MAP.keys())
@@ -123,7 +123,9 @@ def make_line_profiler():
         pdf_blend.spatiotemporal,
         pdf_blend.spatiotemporal_variance,
         pdf_blend.spatial_only,
-        pdf_blend.apply_minimum_density,
+        # apply_minimum_density moved to a device kernel (stads'
+        # sample_warp.cuh) -- nothing left here for line_profiler to
+        # instrument at the Python level.
         compute_pdf_from_gradients_image,
         compute_pdf_from_optical_flow,
         compute_pdf_from_temporal_variance,
@@ -157,15 +159,15 @@ def run_sampler(config: RunConfig, gt_name, scanned_pixel_percent, sampler_type,
                 interpol_method="linear", has_temporal_sampler=True,
                 has_temporal_reconstruction=True, alpha=None, adaptive_fraction=0.0,
                 minDensityGamma=0.0, temporal_method="optical_flow",
-                # temporal_residual_cutoff/temporal_residual_confidence_scale
-                # sit here, immediately after temporal_method:
-                # experiments_main.py's sampler_tasks tuples are unpacked
-                # positionally and end at this run, so a new sweep axis has
-                # to land exactly here, not after the keyword-only-in-
-                # practice params below (see the tuple-order comment at
-                # that call site).
                 temporal_residual_cutoff=DEFAULT_TEMPORAL_RESIDUAL_CUTOFF,
                 temporal_residual_confidence_scale=DEFAULT_TEMPORAL_RESIDUAL_CONFIDENCE_SCALE,
+                # sample_sequence sits here, immediately after
+                # temporal_residual_confidence_scale: experiments_main.py's
+                # sampler_tasks tuples are unpacked positionally and end at
+                # this run, so a new sweep axis has to land exactly here,
+                # not after the keyword-only-in-practice params below (see
+                # the tuple-order comment at that call site).
+                sample_sequence="stratified",
                 temporal_weight=DEFAULT_TEMPORAL_WEIGHT,
                 pdf_temporal_downscale=None, pdf_temporal_sigma=None,
                 extra_sampler_kwargs=None, extra_path_parts=()):
@@ -175,6 +177,13 @@ def run_sampler(config: RunConfig, gt_name, scanned_pixel_percent, sampler_type,
     "temporal_variance", the two interchangeable temporal signals blended
     into the pdf (ignored for sampler_type="stratified", which has no
     temporal signal at all).
+
+    sample_sequence: AdaptiveSampler's sampleSequence -- "uniform" |
+    "stratified" | "halton", the [0,1)^2 input point sequence warped
+    through the hierarchical pdf-mass draw every frame (including the
+    first; see stads.pdfsampling.point_sequences). Ignored for
+    sampler_type="stratified" (that baseline always uses its own fixed
+    stratified sequence, not swept here -- see StratifiedSampler).
 
     temporal_weight: AdaptiveSampler's fixed spatial/temporal pdf blend
     ratio (0=spatial only, 1=temporal only). pdf_temporal_downscale/
@@ -202,12 +211,13 @@ def run_sampler(config: RunConfig, gt_name, scanned_pixel_percent, sampler_type,
         f"temporalMethod={temporal_method} | "
         f"temporalResidualCutoff={temporal_residual_cutoff} | "
         f"temporalResidualConfidenceScale={temporal_residual_confidence_scale} | "
+        f"sampleSequence={sample_sequence} | "
         f"alpha={alpha} | adaptive={adaptive_fraction}")
     try:
         ground_truth_path = _ground_truth_path(gt_name)
         if sampler_type == "adaptive":
             sampler = AdaptiveSampler(
-                initialSampling="stratified",
+                sampleSequence=sample_sequence,
                 boundaryPlacement="border",
                 interpolMethod=interpol_method,
                 sparsityPercent=scanned_pixel_percent,
@@ -253,6 +263,7 @@ def run_sampler(config: RunConfig, gt_name, scanned_pixel_percent, sampler_type,
             f"temporalMethod_{temporal_method}",
             f"temporalResidualCutoff_{temporal_residual_cutoff}",
             f"temporalResidualConfidenceScale_{temporal_residual_confidence_scale}",
+            f"sampleSequence_{sample_sequence}",
             f"alpha_{alpha}", f"adaptive_{adaptive_fraction}", *extra_path_parts)
         os.makedirs(example_dir, exist_ok=True)
 
@@ -289,6 +300,7 @@ def run_sampler(config: RunConfig, gt_name, scanned_pixel_percent, sampler_type,
                 "beta": alpha if (sampler_type == "adaptive" and has_temporal_reconstruction) else None,
                 "adaptiveFraction": adaptive_fraction if sampler_type == "adaptive" else None,
                 "minDensityGamma": minDensityGamma if sampler_type == "adaptive" else None,
+                "sampleSequence": sample_sequence if sampler_type == "adaptive" else None,
                 "temporalMethod": temporal_method if (sampler_type == "adaptive" and has_temporal_sampler) else None,
                 "temporalResidualCutoff": (
                     temporal_residual_cutoff
@@ -326,7 +338,7 @@ def run_sampler(config: RunConfig, gt_name, scanned_pixel_percent, sampler_type,
 #: own columns to a copy of this list rather than to this one.
 BASE_CSV_FIELDNAMES = ["sampler", "withTemporalSampler", "withTemporalReconstruction", "gt_name",
                        "scanned_pixel_percent", "frame_idx", "PSNR", "SSIM", "alpha", "beta",
-                       "adaptiveFraction", "minDensityGamma", "temporalMethod",
+                       "adaptiveFraction", "minDensityGamma", "sampleSequence", "temporalMethod",
                        "temporalResidualCutoff", "temporalResidualConfidenceScale"]
 
 
