@@ -32,20 +32,21 @@ logging.basicConfig(level=logging.INFO)
 # NOTE: this multiplies the adaptive task count by len(INTERPOLATION_METHODS).
 INTERPOLATION_METHODS = ["cubic"]
 
-SCANNED_PIXELS_PERCENTAGES = [1.0]
-ALPHAS = [0.25, 0.5, 1.0]
+SCANNED_PIXELS_PERCENTAGES = [0.1, 0.5, 1.0, 2.0, 5.0]
+ALPHAS = [0.25, 0.5, 1.0, 5.0, 10.0]
 TEMPORAL_SAMPLING_OPTIONS = [True]
 TEMPORAL_RECONSTRUCTION_OPTIONS = [True]
 
-TEMPORAL_METHODS = ["temporal_variance", "optical_flow"]  # ["optical_flow", "temporal_variance"]
+TEMPORAL_METHODS = ["temporal_variance"]#, "optical_flow"]  # ["optical_flow", "temporal_variance"]
 TEMPORAL_RESIDUAL_CUTOFFS = [12.0, 25.0, 50.0]
 TEMPORAL_RESIDUAL_CONFIDENCE_SCALES = [100.0, 250.0, 500.0]
-ADAPTIVE_REFINEMENT_FRACTIONS = [0.3] #[0.0, 0.1, 0.3, 0.5]
+ADAPTIVE_REFINEMENT_FRACTIONS = [0.1, 0.3] #[0.0, 0.1, 0.3, 0.5]
 MIN_DENSITY_GAMMAS = [0.1]
 
 DEBUG_IMAGES_ENABLED = True
 DEBUG_IMAGES_DICT = (
-        debug_images_dict({"reconstruction", "samples", "pdf", "pdf_spatial", "pdf_temporal", "flow", "temporal_variance"})
+        #debug_images_dict({"reconstruction", "samples", "pdf", "pdf_spatial", "pdf_temporal", "flow", "temporal_variance"})
+        debug_images_dict({"reconstruction", "samples", "pdf"})
     if DEBUG_IMAGES_ENABLED else None
 )
 
@@ -54,7 +55,7 @@ output_dir = "plots"
 os.makedirs(output_dir, exist_ok=True)
 LOGFILE = "script_log.txt"
 CSV_PATH = os.path.join(output_dir, "per_frame_results.csv")
-STANDARD_WORKER_POOL_SIZE = 6 #6 probably best value for asr-ws-murdock
+STANDARD_WORKER_POOL_SIZE = 2 #6 probably best value for asr-ws-murdock
 
 # Line-by-line profiling of the pdf and overlay_masks phases (see stads.py's
 # [PHASE-TOTAL] log), opt-in via STADS_LINE_PROFILE=1 so a normal run's
