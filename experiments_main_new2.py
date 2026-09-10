@@ -224,7 +224,6 @@ def main():
             future = executor.submit(run_sampler_worker, RUN_CONFIG, experiment)
             futures[future] = experiment
 
-        save_counter = 0
         for future in as_completed(futures):
             experiment = futures[future]
             try:
@@ -232,7 +231,7 @@ def main():
                 if error_msg:
                     # Worker had an exception
                     EXPERIMENT_MANAGER.mark_experiment_error(experiment.experiment_id, error_msg)
-                    log(LOGFILE, f"[WORKER ERROR] {experiment.experiment_id}")
+                    log(LOGFILE, f"[WORKER ERROR] {experiment.experiment_id} | {error_msg[:100]}")
                 elif result:
                     write_results(result, CSV_PATH, BASE_CSV_FIELDNAMES, LOGFILE)
                     EXPERIMENT_MANAGER.mark_experiment_finished(experiment.experiment_id, example_dir)
@@ -243,15 +242,12 @@ def main():
                 EXPERIMENT_MANAGER.mark_experiment_error(experiment.experiment_id, str(e))
                 log(LOGFILE, f"[WORKER ERROR] {experiment.experiment_id} | {e}")
             
-            save_counter += 1
-            # Save state periodically (every 5 completions) and at the end
-            if save_counter % 5 == 0:
+            # Periodically save state
+            if len(experiments_to_run) > 10:
                 EXPERIMENT_MANAGER._save_to_json()
-                log(LOGFILE, f"[JSON] Periodic save (progress: {save_counter}/{len(experiments_to_run)})")
 
     # Save final state
     EXPERIMENT_MANAGER._save_to_json()
-    log(LOGFILE, f"[JSON] Final state saved to {JSON_PATH}")
 
     # Low-dwell tasks (currently disabled)
     low_dwell_tasks = []

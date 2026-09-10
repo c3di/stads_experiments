@@ -244,10 +244,21 @@ class ExperimentRunManager:
     def _save_to_json(self):
         """Save experiments to JSON file."""
         if not self.json_path:
+            print("[JSON DEBUG] No json_path specified, skipping save")
             return
         
         try:
             os.makedirs(os.path.dirname(self.json_path) or ".", exist_ok=True)
+            
+            # Count statuses for debug output
+            started_count = sum(1 for e in self.experiments.values() if e.status == ExperimentStatus.RUNNING)
+            finished_count = sum(1 for e in self.experiments.values() if e.status == ExperimentStatus.FINISHED)
+            error_count = sum(1 for e in self.experiments.values() if e.status == ExperimentStatus.ERROR)
+            not_started_count = sum(1 for e in self.experiments.values() if e.status == ExperimentStatus.NOT_STARTED)
+            
+            print(f"[JSON DEBUG] Saving {len(self.experiments)} experiments to {self.json_path}")
+            print(f"[JSON DEBUG] Status counts: NOT_STARTED={not_started_count}, RUNNING={started_count}, FINISHED={finished_count}, ERROR={error_count}")
+            
             data = {
                 "experiments": {
                     exp_id: exp.to_dict() 
@@ -256,8 +267,9 @@ class ExperimentRunManager:
                 "metadata": {
                     "total_count": len(self.experiments),
                     "completed_count": sum(1 for e in self.experiments.values() if e.is_complete()),
-                    "not_started_count": sum(1 for e in self.experiments.values() if e.status == ExperimentStatus.NOT_STARTED),
-                    "error_count": sum(1 for e in self.experiments.values() if e.status == ExperimentStatus.ERROR),
+                    "not_started_count": not_started_count,
+                    "error_count": error_count,
+                    "running_count": started_count,
                 }
             }
             
@@ -267,8 +279,11 @@ class ExperimentRunManager:
                 json.dump(data, f, indent=2)
             os.replace(temp_path, self.json_path)
             self._dirty = False
+            print(f"[JSON DEBUG] Successfully saved to {self.json_path}")
         except Exception as e:
-            print(f"Error saving JSON: {e}")
+            import traceback
+            print(f"[JSON DEBUG] Error saving JSON: {e}")
+            print(traceback.format_exc())
     
     def _mark_dirty(self):
         """Mark that JSON needs to be saved."""
@@ -312,40 +327,47 @@ class ExperimentRunManager:
             # Mode a: No JSON usage - use only assembled experiments
             if assembled_experiments:
                 self.experiments = {e.experiment_id: e for e in assembled_experiments}
+                print(f"[JSON DEBUG] NO_JSON: created {len(self.experiments)} experiments, no JSON persistence")
             return assembled_experiments or []
         
         elif self.mode == self.USE_ONLY:
             # Mode b: Use only JSON file, skip assembly
             self.experiments = self._load_from_json()
             ready_experiments = self.get_ready_experiments()
-            print(f"Loaded {len(self.experiments)} experiments from JSON, {len(ready_experiments)} ready to run")
+            print(f"[JSON DEBUG] USE_ONLY: loaded {len(self.experiments)} experiments from JSON, {len(ready_experiments)} ready to run")
             return ready_experiments
         
         elif self.mode == self.USE_AND_UPDATE:
             # Mode c: Use and update - merge assembly with JSON
             # First load existing from JSON
             existing_experiments = self._load_from_json()
+            print(f"[JSON DEBUG] USE_AND_UPDATE: loaded {len(existing_experiments)} existing experiments from JSON")
             
             if assembled_experiments:
                 # Create a dict of existing by experiment_id
                 existing_by_id = {e.experiment_id: e for e in existing_experiments.values()}
                 
                 # Merge: keep existing status for experiments that exist, add new ones
+                new_count = 0
+                existing_count = 0
                 for exp in assembled_experiments:
                     if exp.experiment_id in existing_by_id:
                         # Keep the existing one (with its status)
                         existing_by_id[exp.experiment_id] = exp  # Update parameters if changed
+                        existing_count += 1
                     else:
                         # Add new experiment with NOT_STARTED status
                         exp.status = ExperimentStatus.NOT_STARTED
                         existing_by_id[exp.experiment_id] = exp
+                        new_count += 1
                 
                 self.experiments = existing_by_id
+                print(f"[JSON DEBUG] USE_AND_UPDATE: {existing_count} existing, {new_count} new, {len(self.experiments)} total")
                 self._save_to_json()  # Save the merged set
             
             # Return only experiments that are not finished
             ready_experiments = self.get_ready_experiments()
-            print(f"Merged experiments: {len(self.experiments)} total, {len(ready_experiments)} ready to run")
+            print(f"[JSON DEBUG] USE_AND_UPDATE: {len(self.experiments)} total, {len(ready_experiments)} ready to run")
             return ready_experiments
         
         return []
@@ -356,6 +378,9 @@ class ExperimentRunManager:
             if experiment_id in self.experiments:
                 self.experiments[experiment_id].mark_started()
                 self._mark_dirty()
+                print(f"[JSON DEBUG] Marked {experiment_id[:8]}... as STARTED")
+            else:
+                print(f"[JSON DEBUG] WARNING: experiment {experiment_id[:8]}... not found in manager")
     
     def mark_experiment_finished(self, experiment_id: str, result_path: Optional[str] = None):
         """Mark an experiment as finished. Thread-safe."""
@@ -363,6 +388,9 @@ class ExperimentRunManager:
             if experiment_id in self.experiments:
                 self.experiments[experiment_id].mark_finished(result_path)
                 self._mark_dirty()
+                print(f"[JSON DEBUG] Marked {experiment_id[:8]}... as FINISHED")
+            else:
+                print(f"[JSON DEBUG] WARNING: experiment {experiment_id[:8]}... not found in manager")
     
     def mark_experiment_error(self, experiment_id: str, error_message: str):
         """Mark an experiment as errored. Thread-safe."""
@@ -370,6 +398,9 @@ class ExperimentRunManager:
             if experiment_id in self.experiments:
                 self.experiments[experiment_id].mark_error(error_message)
                 self._mark_dirty()
+                print(f"[JSON DEBUG] Marked {experiment_id[:8]}... as ERROR: {error_message[:50] if error_message else 'None'}")
+            else:
+                print(f"[JSON DEBUG] WARNING: experiment {experiment_id[:8]}... not found in manager")
     
     def get_experiment_by_task(self, task: Tuple) -> Optional[ExperimentRun]:
         """Find experiment by task tuple (for backward compatibility)."""

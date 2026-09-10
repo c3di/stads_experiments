@@ -41,7 +41,7 @@ GROUNDTRUTH_MAP = {
     #"LI_EXPULSION_ONE_ORIGINAL": ("Li_Expulsion_1.tif", 20000),    
     #"LI_EXPULSION_TWO": ("Li_Expulsion_2.tif", 20000),
     #"SI_LITHIATION_ONE": ("Si_Lithiation.tif", 20000),
-    "EDS_AEROSPACE_ONE": ("EDS_aerospace_one.tif", 20000),
+    "EDS_AEROSPACE_ONE_10FPS_downscale": ("EDS_aerospace_1x10 _halfres.tif", 20000),
     #"EDS_AEROSPACE_TWO":   ("EDS_aerospace_two.tif", 20000),
     #"TITANIUM_STRAIN_ONE": ("Titanium_strain.tif", 20000)
 }
