@@ -1,11 +1,12 @@
 import os
 import time
 import threading
+from typing import Optional, List
 
 from tifffile import tifffile
 
 import numpy as np
-from concurrent.futures import ProcessPoolExecutor, as_completed
+from concurrent.futures import ProcessPoolExecutor, as_completed, wait, FIRST_COMPLETED
 import logging
 import traceback
 
@@ -29,20 +30,20 @@ logging.basicConfig(level=logging.INFO)
 # --------------------
 # CONFIG
 # --------------------
-INTERPOLATION_METHODS = ["cubic"]
+INTERPOLATION_METHODS: List[str] = ["cubic"]
 
-SCANNED_PIXELS_PERCENTAGES = [0.1, 1.0]
-ALPHAS = [0.25, 0.5, 1.0]
-TEMPORAL_SAMPLING_OPTIONS = [True]
-TEMPORAL_RECONSTRUCTION_OPTIONS = [True]
+SCANNED_PIXELS_PERCENTAGES: List[float] = [0.1, 1.0]
+ALPHAS: List[Optional[float]] = [0.25, 0.5, 1.0]
+TEMPORAL_SAMPLING_OPTIONS: List[bool] = [True]
+TEMPORAL_RECONSTRUCTION_OPTIONS: List[bool] = [True]
 
-TEMPORAL_METHODS = ["temporal_variance"]
-TEMPORAL_RESIDUAL_CUTOFFS = [12.0, 25.0, 50.0]
-TEMPORAL_RESIDUAL_CONFIDENCE_SCALES = [100.0, 250.0, 500.0]
-ADAPTIVE_REFINEMENT_FRACTIONS = [0.0, 0.1, 0.3, 0.5]
-MIN_DENSITY_GAMMAS = [0.1]
+TEMPORAL_METHODS: List[str] = ["temporal_variance"]
+TEMPORAL_RESIDUAL_CUTOFFS: List[float] = [12.0, 25.0, 50.0]
+TEMPORAL_RESIDUAL_CONFIDENCE_SCALES: List[float] = [100.0, 250.0, 500.0]
+ADAPTIVE_REFINEMENT_FRACTIONS: List[float] = [0.3] #[0.0, 0.1, 0.3, 0.5]
+MIN_DENSITY_GAMMAS: List[float] = [0.1]
 
-SAMPLE_SEQUENCES = ["uniform", "stratified", "halton"]
+SAMPLE_SEQUENCES: List[str] = ["uniform"]#, "stratified", "halton"]
 
 DEBUG_IMAGES_ENABLED = True
 DEBUG_IMAGES_DICT = (
@@ -216,48 +217,56 @@ def main():
     log(LOGFILE, "===== Starting Parallel Runs =====")
 
     # Run experiments with status updates in main thread
+    # Only submit STANDARD_WORKER_POOL_SIZE at a time to track running state accurately
     with ProcessPoolExecutor(max_workers=STANDARD_WORKER_POOL_SIZE) as executor:
         futures = {}
-        submit_counter = 0
-        for experiment in experiments_to_run:
-            # Mark as running WHEN we submit to worker pool
-            EXPERIMENT_MANAGER.mark_experiment_started(experiment.experiment_id)
+        remaining_experiments = list(experiments_to_run)
+        
+        # Submit initial batch
+        for experiment in remaining_experiments[:STANDARD_WORKER_POOL_SIZE]:
             future = executor.submit(run_sampler_worker, RUN_CONFIG, experiment)
             futures[future] = experiment
-            submit_counter += 1
-            # Save state periodically during submission (every 10 submissions)
-            if submit_counter % 10 == 0:
-                EXPERIMENT_MANAGER._save_to_json()
-                log(LOGFILE, f"[JSON] Saved state after submitting {submit_counter}/{len(experiments_to_run)} experiments")
+            EXPERIMENT_MANAGER.mark_experiment_started(experiment.experiment_id)
+        
+        remaining_experiments = remaining_experiments[STANDARD_WORKER_POOL_SIZE:]
+        EXPERIMENT_MANAGER.save_if_dirty()
 
-        save_counter = 0
-        for future in as_completed(futures):
-            experiment = futures[future]
+        while futures:
+            # Wait for next future to complete
+            done, _ = wait(futures.keys(), return_when=FIRST_COMPLETED)
             
-            try:
-                exp_result, result, example_dir, error_msg = future.result()
-                if error_msg:
-                    # Worker had an exception
-                    EXPERIMENT_MANAGER.mark_experiment_error(experiment.experiment_id, error_msg)
-                    log(LOGFILE, f"[WORKER ERROR] {experiment.experiment_id}")
-                elif result:
-                    write_results(result, CSV_PATH, BASE_CSV_FIELDNAMES, LOGFILE)
-                    EXPERIMENT_MANAGER.mark_experiment_finished(experiment.experiment_id, example_dir)
-                else:
-                    log(LOGFILE, f"[WORKER WARNING] No result for {experiment.experiment_id}")
-                    EXPERIMENT_MANAGER.mark_experiment_error(experiment.experiment_id, "No result")
-            except Exception as e:
-                EXPERIMENT_MANAGER.mark_experiment_error(experiment.experiment_id, str(e))
-                log(LOGFILE, f"[WORKER ERROR] {experiment.experiment_id} | {e}")
+            for future in done:
+                experiment = futures[future]
+                
+                try:
+                    exp_result, result, example_dir, error_msg = future.result()
+                    if error_msg:
+                        EXPERIMENT_MANAGER.mark_experiment_error(experiment.experiment_id, error_msg)
+                        log(LOGFILE, f"[WORKER ERROR] {experiment.experiment_id}")
+                    elif result:
+                        write_results(result, CSV_PATH, BASE_CSV_FIELDNAMES, LOGFILE)
+                        EXPERIMENT_MANAGER.mark_experiment_finished(experiment.experiment_id, example_dir)
+                    else:
+                        log(LOGFILE, f"[WORKER WARNING] No result for {experiment.experiment_id}")
+                        EXPERIMENT_MANAGER.mark_experiment_error(experiment.experiment_id, "No result")
+                except Exception as e:
+                    EXPERIMENT_MANAGER.mark_experiment_error(experiment.experiment_id, str(e))
+                    log(LOGFILE, f"[WORKER ERROR] {experiment.experiment_id} | {e}")
+                
+                # Remove completed future
+                del futures[future]
             
-            save_counter += 1
-            # Save state periodically (every 5 completions)
-            if save_counter % 5 == 0:
-                EXPERIMENT_MANAGER._save_to_json()
-                log(LOGFILE, f"[JSON] Periodic save (progress: {save_counter}/{len(experiments_to_run)})")
+            # Submit new experiments to maintain pool size
+            while remaining_experiments and len(futures) < STANDARD_WORKER_POOL_SIZE:
+                next_experiment = remaining_experiments.pop(0)
+                next_future = executor.submit(run_sampler_worker, RUN_CONFIG, next_experiment)
+                futures[next_future] = next_experiment
+                EXPERIMENT_MANAGER.mark_experiment_started(next_experiment.experiment_id)
+            
+            EXPERIMENT_MANAGER.save_if_dirty()
 
-    # Save final state
-    EXPERIMENT_MANAGER._save_to_json()
+    # Save final state (belt and suspenders)
+    EXPERIMENT_MANAGER.finalize()
     log(LOGFILE, f"[JSON] Final state saved to {JSON_PATH}")
 
     # Low-dwell tasks (currently disabled)

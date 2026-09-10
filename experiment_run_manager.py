@@ -12,7 +12,7 @@ import json
 import threading
 import hashlib
 from dataclasses import dataclass, field
-from typing import Optional, List, Dict, Any, Tuple
+from typing import Optional, Dict, Any, Tuple, List
 from enum import Enum
 
 
@@ -398,6 +398,11 @@ class ExperimentRunManager:
             else:
                 print(f"[JSON DEBUG] WARNING: experiment {experiment_id[:8]}... not found in manager")
     
+    def get_experiment_by_id(self, experiment_id: str) -> Optional[ExperimentRun]:
+        """Get experiment by its ID."""
+        with self._lock:
+            return self.experiments.get(experiment_id)
+
     def get_experiment_by_task(self, task: Tuple) -> Optional[ExperimentRun]:
         """Find experiment by task tuple (for backward compatibility)."""
         # Create a temporary ExperimentRun from the task tuple
@@ -456,7 +461,7 @@ def create_experiments_from_parameter_lists(
     interpol_methods: List[str] = ["linear"],
     has_temporal_samplers: List[bool] = [True],
     has_temporal_reconstructions: List[bool] = [True],
-    alphas: List[float] = [1.0],
+    alphas: List[Optional[float]] = [1.0],
     adaptive_fractions: List[float] = [0.0],
     min_density_gammas: List[float] = [0.0],
     temporal_methods: List[str] = ["optical_flow"],
