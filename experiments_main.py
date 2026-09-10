@@ -55,14 +55,14 @@ output_dir = "plots"
 os.makedirs(output_dir, exist_ok=True)
 LOGFILE = "script_log.txt"
 CSV_PATH = os.path.join(output_dir, "per_frame_results.csv")
-STANDARD_WORKER_POOL_SIZE = 2
+STANDARD_WORKER_POOL_SIZE = 4
 
 # JSON persistence configuration
 # Set JSON_MODE directly here:
 #   ExperimentRunManager.NO_JSON - No JSON persistence (original behavior)
 #   ExperimentRunManager.USE_ONLY - Use only JSON file, skip assembly, run only unfinished
 #   ExperimentRunManager.USE_AND_UPDATE - Merge assembly with JSON, filter finished, add new configs
-JSON_MODE = ExperimentRunManager.NO_JSON
+JSON_MODE = ExperimentRunManager.USE_AND_UPDATE
 JSON_PATH = os.path.join(output_dir, "experiments_state.json")
 
 # Global experiment run manager
@@ -218,15 +218,22 @@ def main():
     # Run experiments with status updates in main thread
     with ProcessPoolExecutor(max_workers=STANDARD_WORKER_POOL_SIZE) as executor:
         futures = {}
+        submit_counter = 0
         for experiment in experiments_to_run:
-            # Mark as started BEFORE submitting to worker
+            # Mark as running WHEN we submit to worker pool
             EXPERIMENT_MANAGER.mark_experiment_started(experiment.experiment_id)
             future = executor.submit(run_sampler_worker, RUN_CONFIG, experiment)
             futures[future] = experiment
+            submit_counter += 1
+            # Save state periodically during submission (every 10 submissions)
+            if submit_counter % 10 == 0:
+                EXPERIMENT_MANAGER._save_to_json()
+                log(LOGFILE, f"[JSON] Saved state after submitting {submit_counter}/{len(experiments_to_run)} experiments")
 
         save_counter = 0
         for future in as_completed(futures):
             experiment = futures[future]
+            
             try:
                 exp_result, result, example_dir, error_msg = future.result()
                 if error_msg:
@@ -244,7 +251,7 @@ def main():
                 log(LOGFILE, f"[WORKER ERROR] {experiment.experiment_id} | {e}")
             
             save_counter += 1
-            # Save state periodically (every 5 completions) and at the end
+            # Save state periodically (every 5 completions)
             if save_counter % 5 == 0:
                 EXPERIMENT_MANAGER._save_to_json()
                 log(LOGFILE, f"[JSON] Periodic save (progress: {save_counter}/{len(experiments_to_run)})")

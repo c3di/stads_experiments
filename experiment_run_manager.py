@@ -347,21 +347,17 @@ class ExperimentRunManager:
                 # Create a dict of existing by experiment_id
                 existing_by_id = {e.experiment_id: e for e in existing_experiments.values()}
                 
-                # Merge: keep existing status for experiments that exist, add new ones
+                # Merge: keep existing experiments (with their status), add new ones
                 new_count = 0
-                existing_count = 0
                 for exp in assembled_experiments:
-                    if exp.experiment_id in existing_by_id:
-                        # Keep the existing one (with its status)
-                        existing_by_id[exp.experiment_id] = exp  # Update parameters if changed
-                        existing_count += 1
-                    else:
+                    if exp.experiment_id not in existing_by_id:
                         # Add new experiment with NOT_STARTED status
                         exp.status = ExperimentStatus.NOT_STARTED
                         existing_by_id[exp.experiment_id] = exp
                         new_count += 1
                 
                 self.experiments = existing_by_id
+                existing_count = len(assembled_experiments) - new_count
                 print(f"[JSON DEBUG] USE_AND_UPDATE: {existing_count} existing, {new_count} new, {len(self.experiments)} total")
                 self._save_to_json()  # Save the merged set
             
