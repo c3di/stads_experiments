@@ -32,22 +32,23 @@ logging.basicConfig(level=logging.INFO)
 # --------------------
 INTERPOLATION_METHODS: List[str] = ["cubic"]
 
-SCANNED_PIXELS_PERCENTAGES: List[float] = [0.1, 1.0]
-ALPHAS: List[Optional[float]] = [0.25, 0.5, 1.0]
+SCANNED_PIXELS_PERCENTAGES: List[float] = [0.1, 0.5, 1.0, 2.0, 5.0]
+ALPHAS: List[Optional[float]] = [0.25, 0.5, 1.0, 3.0, 5.0, 10.0]
 TEMPORAL_SAMPLING_OPTIONS: List[bool] = [True]
 TEMPORAL_RECONSTRUCTION_OPTIONS: List[bool] = [True]
 
 TEMPORAL_METHODS: List[str] = ["temporal_variance"]
-TEMPORAL_RESIDUAL_CUTOFFS: List[float] = [12.0, 25.0, 50.0]
-TEMPORAL_RESIDUAL_CONFIDENCE_SCALES: List[float] = [100.0, 250.0, 500.0]
-ADAPTIVE_REFINEMENT_FRACTIONS: List[float] = [0.3] #[0.0, 0.1, 0.3, 0.5]
+TEMPORAL_RESIDUAL_CUTOFFS: List[float] = [12.0, 25.0]#, 50.0]
+TEMPORAL_RESIDUAL_CONFIDENCE_SCALES: List[float] = [100.0, 250.0]#, 500.0]
+ADAPTIVE_REFINEMENT_FRACTIONS: List[float] = [0.0, 0.1, 0.3, 0.5]
 MIN_DENSITY_GAMMAS: List[float] = [0.1]
 
-SAMPLE_SEQUENCES: List[str] = ["uniform"]#, "stratified", "halton"]
+SAMPLE_SEQUENCES: List[str] = ["uniform", "stratified", "halton"]
 
 DEBUG_IMAGES_ENABLED = True
 DEBUG_IMAGES_DICT = (
-    debug_images_dict({"reconstruction", "samples", "pdf", "pdf_spatial", "pdf_temporal", "flow", "temporal_variance"})
+    #debug_images_dict({"reconstruction", "samples", "pdf", "pdf_spatial", "pdf_temporal", "flow", "temporal_variance"})
+    debug_images_dict({"reconstruction", "samples", "pdf"})
     if DEBUG_IMAGES_ENABLED else None
 )
 
@@ -56,7 +57,7 @@ output_dir = "plots"
 os.makedirs(output_dir, exist_ok=True)
 LOGFILE = "script_log.txt"
 CSV_PATH = os.path.join(output_dir, "per_frame_results.csv")
-STANDARD_WORKER_POOL_SIZE = 4
+STANDARD_WORKER_POOL_SIZE = 6
 
 # JSON persistence configuration
 # Set JSON_MODE directly here:

@@ -229,12 +229,29 @@ class ExperimentRunManager:
                 data = json.load(f)
             
             experiments = {}
+            error_reset_count = 0
+            running_reset_count = 0
             for exp_id, exp_data in data.get("experiments", {}).items():
                 try:
                     experiment = ExperimentRun.from_dict(exp_data)
+                    # Reset ERROR experiments to NOT_STARTED so they get re-queued
+                    if experiment.status == ExperimentStatus.ERROR:
+                        experiment.status = ExperimentStatus.NOT_STARTED
+                        experiment.error_message = None
+                        error_reset_count += 1
+                    # Reset RUNNING experiments to NOT_STARTED (likely from terminated process)
+                    elif experiment.status == ExperimentStatus.RUNNING:
+                        experiment.status = ExperimentStatus.NOT_STARTED
+                        experiment.error_message = None
+                        running_reset_count += 1
                     experiments[exp_id] = experiment
                 except Exception as e:
                     print(f"Warning: Could not load experiment {exp_id}: {e}")
+            
+            if error_reset_count > 0:
+                print(f"[JSON DEBUG] Reset {error_reset_count} ERROR experiments to NOT_STARTED for re-queuing")
+            if running_reset_count > 0:
+                print(f"[JSON DEBUG] Reset {running_reset_count} RUNNING experiments to NOT_STARTED for re-queuing")
             
             return experiments
         except Exception as e:
