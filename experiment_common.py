@@ -37,11 +37,11 @@ from stads.debug_images.triangulation import TriangulationDebugImage
 GROUNDTRUTH_MAP = {
     #"HYDRATION_ONE": ("Hydration_one.tif", 25000),
     # "LI_EXPULSION_ONE_50FPS": ("Li_Expulsion_1_50fps.tif", 20000),
-    "LI_EXPULSION_ONE_10FPS": ("Li_Expulsion_1x10.tif", 20000),
-    "LI_EXPULSION_ONE_ORIGINAL": ("Li_Expulsion_1.tif", 20000),    
-    # "LI_EXPULSION_TWO": ("Li_Expulsion_2.tif", 20000),
+    #"LI_EXPULSION_ONE_10FPS": ("Li_Expulsion_1x10.tif", 20000),
+    #"LI_EXPULSION_ONE_ORIGINAL": ("Li_Expulsion_1.tif", 20000),    
+    #"LI_EXPULSION_TWO": ("Li_Expulsion_2.tif", 20000),
     #"SI_LITHIATION_ONE": ("Si_Lithiation.tif", 20000),
-    #"EDS_AEROSPACE_ONE": ("EDS_aerospace_one.tif", 20000),
+    "EDS_AEROSPACE_ONE": ("EDS_aerospace_one.tif", 20000),
     #"EDS_AEROSPACE_TWO":   ("EDS_aerospace_two.tif", 20000),
     #"TITANIUM_STRAIN_ONE": ("Titanium_strain.tif", 20000)
 }
