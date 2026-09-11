@@ -57,7 +57,7 @@ output_dir = "plots"
 os.makedirs(output_dir, exist_ok=True)
 LOGFILE = "script_log.txt"
 CSV_PATH = os.path.join(output_dir, "per_frame_results.csv")
-STANDARD_WORKER_POOL_SIZE = 10
+STANDARD_WORKER_POOL_SIZE = 6
 
 # JSON persistence configuration
 # Set JSON_MODE directly here:
