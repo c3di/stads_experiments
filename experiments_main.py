@@ -32,15 +32,15 @@ logging.basicConfig(level=logging.INFO)
 # --------------------
 INTERPOLATION_METHODS: List[str] = ["cubic"]
 
-SCANNED_PIXELS_PERCENTAGES: List[float] = [0.1, 0.5, 1.0, 2.0, 5.0]
-ALPHAS: List[Optional[float]] = [0.25, 0.5, 1.0, 3.0, 5.0, 10.0]
+SCANNED_PIXELS_PERCENTAGES: List[float] = [0.1, 0.5, 1.0, 5.0]
+ALPHAS: List[Optional[float]] = [0.25, 0.5, 1.0, 3.0, 5.0]
 TEMPORAL_SAMPLING_OPTIONS: List[bool] = [True]
 TEMPORAL_RECONSTRUCTION_OPTIONS: List[bool] = [True]
 
 TEMPORAL_METHODS: List[str] = ["temporal_variance"]
 TEMPORAL_RESIDUAL_CUTOFFS: List[float] = [12.0, 25.0]#, 50.0]
 TEMPORAL_RESIDUAL_CONFIDENCE_SCALES: List[float] = [100.0, 250.0]#, 500.0]
-ADAPTIVE_REFINEMENT_FRACTIONS: List[float] = [0.0, 0.1, 0.3, 0.5]
+ADAPTIVE_REFINEMENT_FRACTIONS: List[float] = [0.1, 0.3]
 MIN_DENSITY_GAMMAS: List[float] = [0.1]
 
 SAMPLE_SEQUENCES: List[str] = ["uniform", "stratified", "halton"]
@@ -57,7 +57,7 @@ output_dir = "plots"
 os.makedirs(output_dir, exist_ok=True)
 LOGFILE = "script_log.txt"
 CSV_PATH = os.path.join(output_dir, "per_frame_results.csv")
-STANDARD_WORKER_POOL_SIZE = 6
+STANDARD_WORKER_POOL_SIZE = 10
 
 # JSON persistence configuration
 # Set JSON_MODE directly here:
