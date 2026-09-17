@@ -15,6 +15,9 @@ from dataclasses import dataclass, field
 from typing import Optional, Dict, Any, Tuple, List
 from enum import Enum
 
+# Type alias for the task tuple used by run_sampler
+TaskTuple = Tuple[str, float, str, str, bool, bool, Optional[float], float, float, str, float, float, str]
+
 
 class ExperimentStatus(Enum):
     """Status enumeration for experiment runs."""
@@ -161,7 +164,7 @@ class ExperimentRun:
         return self.status in (ExperimentStatus.NOT_STARTED, ExperimentStatus.ERROR)
     
     @classmethod
-    def from_task_tuple(cls, task: Tuple) -> "ExperimentRun":
+    def from_task_tuple(cls, task: TaskTuple) -> "ExperimentRun":
         """Create ExperimentRun from task tuple (backward compatibility).
         
         The tuple order matches run_sampler's signature:
@@ -420,7 +423,7 @@ class ExperimentRunManager:
         with self._lock:
             return self.experiments.get(experiment_id)
 
-    def get_experiment_by_task(self, task: Tuple) -> Optional[ExperimentRun]:
+    def get_experiment_by_task(self, task: TaskTuple) -> Optional[ExperimentRun]:
         """Find experiment by task tuple (for backward compatibility)."""
         # Create a temporary ExperimentRun from the task tuple
         temp_experiment = ExperimentRun.from_task_tuple(task)
