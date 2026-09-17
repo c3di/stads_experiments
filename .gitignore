@@ -80,3 +80,6 @@ analysis/
 lambda_diagnostic.png
 vs code env command.txt
 rebuild.bat
+
+# Parameter tuning results
+statistics/tune_results/
