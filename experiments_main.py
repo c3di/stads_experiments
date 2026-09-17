@@ -18,6 +18,7 @@ from sem_noise_generator import SEMNoiseModel
 from experiment_common import (
     GROUNDTRUTH_MAP, GROUNDTRUTH_NAMES, _ground_truth_path, log,
     debug_images_dict, RunConfig, run_sampler, BASE_CSV_FIELDNAMES,
+    debug_output_dir, DEBUG_OUTPUT_ROOT, PublicationOptions,
     write_results, LINE_PROFILE_ENABLED,
 )
 from experiment_run_manager import (
@@ -32,25 +33,30 @@ logging.basicConfig(level=logging.INFO)
 # --------------------
 INTERPOLATION_METHODS: List[str] = ["cubic"]
 
-SCANNED_PIXELS_PERCENTAGES: List[float] = [0.1, 0.5, 1.0, 2.0, 5.0]
-ALPHAS: List[Optional[float]] = [0.25, 0.5, 1.0, 3.0, 5.0, 10.0]
+SCANNED_PIXELS_PERCENTAGES: List[float] = [0.5]
+ALPHAS: List[Optional[float]] = [0.25, 0.5]
 TEMPORAL_SAMPLING_OPTIONS: List[bool] = [True]
 TEMPORAL_RECONSTRUCTION_OPTIONS: List[bool] = [True]
 
 TEMPORAL_METHODS: List[str] = ["temporal_variance"]
-TEMPORAL_RESIDUAL_CUTOFFS: List[float] = [12.0, 25.0]#, 50.0]
-TEMPORAL_RESIDUAL_CONFIDENCE_SCALES: List[float] = [100.0, 250.0]#, 500.0]
-ADAPTIVE_REFINEMENT_FRACTIONS: List[float] = [0.0, 0.1, 0.3, 0.5]
+TEMPORAL_RESIDUAL_CUTOFFS: List[float] = [12.5]#, 25.0, 50.0]
+TEMPORAL_RESIDUAL_CONFIDENCE_SCALES: List[float] = [250.0]#, 500.0]
+ADAPTIVE_REFINEMENT_FRACTIONS: List[float] = [0.3]
 MIN_DENSITY_GAMMAS: List[float] = [0.1]
 
-SAMPLE_SEQUENCES: List[str] = ["uniform", "stratified", "halton"]
+SAMPLE_SEQUENCES: List[str] = ["halton"] #["uniform", "stratified", "halton"]
 
 DEBUG_IMAGES_ENABLED = True
 DEBUG_IMAGES_DICT = (
-    #debug_images_dict({"reconstruction", "samples", "pdf", "pdf_spatial", "pdf_temporal", "flow", "temporal_variance"})
-    debug_images_dict({"reconstruction", "samples", "pdf"})
+    debug_images_dict({"reconstruction", "samples", "pdf", "pdf_spatial", "pdf_temporal", "flow", "temporal_variance"})
+    # debug_images_dict({"reconstruction", "samples", "pdf"})
     if DEBUG_IMAGES_ENABLED else None
 )
+
+#: Run the dose-matched full-raster reference beside the sparse samplers, one
+#: run per (dataset, sparsity). It shares the CSV with them, under
+#: sampler="low_dwell".
+RUN_LOW_DWELL_BASELINE = True
 
 limit_number_of_frames_to = None
 output_dir = "plots"
@@ -70,12 +76,22 @@ JSON_PATH = os.path.join(output_dir, "experiments_state.json")
 # Global experiment run manager
 EXPERIMENT_MANAGER = None
 
+# Publication ("_hr") debug streams: each enabled debug kind gets a second
+# TIFF stack beside its plain one, supersampled by PUBLICATION_SCALE and
+# carrying the dataset's own ROI from GROUNDTRUTH_MAP as a zoomed inset.
+# None disables them entirely.
+#
+# frames is worth naming explicitly: a scale-4 page of a 1024x1024 frame is
+# ~50 MB before compression, and a figure needs one frame, not a run's worth.
+# PUBLICATION_IMAGES = None
+PUBLICATION_IMAGES = PublicationOptions(scale=4, frames=(100,101,102,103,104,105,106,107,108,109,110))
+
 RUN_CONFIG = RunConfig(
-    output_dir=output_dir,
     limit_number_of_frames_to=limit_number_of_frames_to,
     debug_images_dict=DEBUG_IMAGES_DICT,
     log_path=LOGFILE,
     line_profile_enabled=LINE_PROFILE_ENABLED,
+    publication_images=PUBLICATION_IMAGES,
 )
 
 
@@ -89,7 +105,7 @@ semNoiseModel.load_model("sem_noise_model.pkl")
 # Load video
 # --------------------
 def load_video(gt_name, limit_number_of_frames_to=None, scanned_pixel_percent=None):
-    _, total_dwell_time = GROUNDTRUTH_MAP[gt_name]
+    total_dwell_time = GROUNDTRUTH_MAP[gt_name][1]
     video = get_frames_from_tif(_ground_truth_path(gt_name), frame_limit=limit_number_of_frames_to)
     if video.ndim == 4 and video.shape[-1] == 1:
         video = video.squeeze(-1)
@@ -98,7 +114,8 @@ def load_video(gt_name, limit_number_of_frames_to=None, scanned_pixel_percent=No
         t_target = (scanned_pixel_percent / 100.0) * t_high
         noisy_video = []
         for frame in video:
-            noisy_frame = semNoiseModel.generate_low_dwell_time_image(frame, t_high=t_high, t_target=t_target)
+            noisy_frame = semNoiseModel.generate_low_dwell_time_image(
+                frame, t_high=t_high, t_target=t_target)
             noisy_video.append(noisy_frame)
         video = np.array(noisy_video)
     return video
@@ -109,19 +126,21 @@ def run_low_dwell_time_sampler(gt_name, scanned_pixel_percent):
     log(LOGFILE, f"Starting: LOW-DWELL | {gt_name} | S={scanned_pixel_percent}%")
     try:
         gt_video = load_video(gt_name, limit_number_of_frames_to)
-        _, t_high = GROUNDTRUTH_MAP[gt_name]
+        t_high = GROUNDTRUTH_MAP[gt_name][1]
         s = scanned_pixel_percent / 100.0
         t_target = s * t_high
         rec_video = []
         PSNRs = []
         SSIMs = []
-        example_dir = os.path.join(output_dir, "examples", "low_dwell", f"sparsity_{scanned_pixel_percent}", gt_name)
+        example_dir = os.path.join(DEBUG_OUTPUT_ROOT, "low_dwell", gt_name,
+                                   f"sparsity_{scanned_pixel_percent}")
         os.makedirs(example_dir, exist_ok=True)
         for i, frame in enumerate(gt_video):
-            noisy_frame = semNoiseModel.generate_low_dwell_time_image(frame, t_high=t_high, t_target=t_target)
+            noisy_frame = semNoiseModel.generate_low_dwell_time_image(
+                frame, t_high=t_high, t_target=t_target)
             rec_video.append(noisy_frame)
             psnr = calculate_psnr(frame, noisy_frame)
-            ssim = calculate_ssim(frame, noisy_frame)
+            ssim, _grad, _full = calculate_ssim(frame, noisy_frame)
             PSNRs.append(psnr)
             SSIMs.append(ssim)
             tifffile.imwrite(os.path.join(example_dir, f"frame_{i:03d}_low_dwell.tiff"), noisy_frame)
@@ -143,7 +162,8 @@ def run_low_dwell_time_sampler(gt_name, scanned_pixel_percent):
             })
         log(LOGFILE, f"[DONE] LOW-DWELL | {gt_name} | S={scanned_pixel_percent}%")
     except Exception as e:
-        log(LOGFILE, f"[ERROR] LOW-DWELL | {gt_name} | S={scanned_pixel_percent}% | {e}")
+        log(LOGFILE, f"[ERROR] LOW-DWELL | {gt_name} | S={scanned_pixel_percent}% | {e}\n"
+                     f"{traceback.format_exc()}")
     return local_results
 
 
@@ -153,17 +173,12 @@ def run_low_dwell_time_sampler(gt_name, scanned_pixel_percent):
 def run_sampler_worker(config, experiment):
     """Worker function that just runs the sampler and returns result."""
     task = experiment.to_tuple()
-    example_dir = os.path.join(
-        config.output_dir, "examples", experiment.sampler_type,
-        f"interpol_{experiment.interpol_method}",
-        f"sparsity_{experiment.scanned_pixel_percent}", experiment.gt_name,
-        f"sampler_{experiment.has_temporal_sampler}_reconstruction_{experiment.has_temporal_reconstruction}",
-        f"temporalMethod_{experiment.temporal_method}",
-        f"temporalResidualCutoff_{experiment.temporal_residual_cutoff}",
-        f"temporalResidualConfidenceScale_{experiment.temporal_residual_confidence_scale}",
-        f"sampleSequence_{experiment.sample_sequence}",
-        f"alpha_{experiment.alpha}", f"adaptive_{experiment.adaptive_fraction}"
-    )
+    example_dir = debug_output_dir(
+        experiment.gt_name, experiment.scanned_pixel_percent,
+        experiment.alpha, experiment.adaptive_fraction,
+        experiment.temporal_residual_cutoff,
+        experiment.temporal_residual_confidence_scale,
+        experiment.sample_sequence)
     try:
         result = run_sampler(config, *task)
         return (experiment, result, example_dir, None)
@@ -270,8 +285,14 @@ def main():
     EXPERIMENT_MANAGER.finalize()
     log(LOGFILE, f"[JSON] Final state saved to {JSON_PATH}")
 
-    # Low-dwell tasks (currently disabled)
-    low_dwell_tasks = []
+    # The dose-matched baseline: the same electron budget spent on a full
+    # raster scan instead of a sparse one, so every pixel is measured at
+    # scanned_pixel_percent of the ground truth's dwell time.
+    low_dwell_tasks = ([(gt_name, scanned_pixel_percent)
+                        for gt_name in GROUNDTRUTH_NAMES
+                        for scanned_pixel_percent in SCANNED_PIXELS_PERCENTAGES]
+                       if RUN_LOW_DWELL_BASELINE else [])
+    log(LOGFILE, f"===== Low-dwell baseline: {len(low_dwell_tasks)} run(s) =====")
     with ProcessPoolExecutor(max_workers=STANDARD_WORKER_POOL_SIZE) as executor:
         futures = {executor.submit(run_low_dwell_time_sampler, *task): task for task in low_dwell_tasks}
         for future in as_completed(futures):
@@ -281,7 +302,7 @@ def main():
                 if result:
                     write_results(result, CSV_PATH, BASE_CSV_FIELDNAMES, LOGFILE)
             except Exception as e:
-                log(LOGFILE, f"[LOW DWELL ERROR] {task}")
+                log(LOGFILE, f"[LOW DWELL ERROR] {task} | {e}\n{traceback.format_exc()}")
 
     log(LOGFILE, "===== All Runs Completed =====")
     log(LOGFILE, f"Saved results to {CSV_PATH}")

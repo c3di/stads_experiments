@@ -93,7 +93,6 @@ DEBUG_IMAGES_DICT = debug_images_dict(
     {"reconstruction", "samples"})
 
 RUN_CONFIG = RunConfig(
-    output_dir=output_dir,
     limit_number_of_frames_to=limit_number_of_frames_to,
     debug_images_dict=DEBUG_IMAGES_DICT,
     log_path=LOGFILE,
@@ -126,7 +125,11 @@ def main():
                 ALPHA, ADAPTIVE_FRACTION, MIN_DENSITY_GAMMA,
                 temporal_method=method,
                 pdf_temporal_downscale=downscale, pdf_temporal_sigma=sigma,
-                extra_path_parts=(f"downscale_{downscale}", f"sigma_{sigma}"),
+                # This sweep varies temporal_method, which debug_output_dir
+                # does not name, so it is carried here -- without it both
+                # methods' figures land in the same directory.
+                extra_path_parts=(f"method_{method}", f"downscale_{downscale}",
+                                  f"sigma_{sigma}"),
             )
             futures[future] = (method, downscale, sigma)
 

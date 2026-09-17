@@ -173,7 +173,13 @@ class SEMNoiseModel:
         return sigma, corr
 
     def generate_low_dwell_time_image(self, image_high, t_high, t_target):
+        """`image_high`, acquired at dwell time `t_high`, as it would look had
+        every pixel been dwelt on for `t_target` instead.
 
+        Only the variance the shorter dwell adds is synthesised, not the whole
+        of sigma(t_target): the input is a real acquisition and already
+        carries sigma(t_high) of its own.
+        """
         dtype = image_high.dtype
 
         image_high = image_high.astype(np.float32)

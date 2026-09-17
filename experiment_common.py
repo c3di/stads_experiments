@@ -4,6 +4,7 @@ AdaptiveSampler/StratifiedSampler run-and-record wrapper, CSV writing, and
 optional line-by-line profiling. Kept here rather than duplicated so the two
 scripts' sampler-construction logic can't drift apart.
 """
+import dataclasses
 import os
 import time
 import traceback
@@ -21,6 +22,7 @@ from stads.pdfsampling.blend import DEFAULT_TEMPORAL_WEIGHT
 from stads.stratified_sampler import StratifiedSampler
 from stads.video_downloader import DEFAULT_SAVE_DIR
 
+from stads.debug_images import PublicationOptions
 from stads.debug_images.reconstruction import ReconstructionDebugImage
 from stads.debug_images.samples import SamplesDebugImage
 from stads.debug_images.pdf import (
@@ -33,26 +35,55 @@ from stads.debug_images.psnr import PsnrMapDebugImage
 from stads.debug_images.ssim import SsimMapDebugImage
 from stads.debug_images.triangulation import TriangulationDebugImage
 
-# display name -> (filename under DEFAULT_SAVE_DIR, total dwell time)
+# display name -> (filename under DEFAULT_SAVE_DIR, total dwell time,
+# publication ROI). The ROI is (top, left, size) in frame pixels -- rows
+# first, and size is its height, the width following the frame's aspect ratio
+# so the inset magnifies both axes equally. The _hr debug images magnify it
+# into their upper-left quadrant. It names a feature in one specimen, so it
+# belongs with that specimen's file rather than with a run's settings. None
+# renders the _hr stream without an inset.
+#
+# Pick one down and to the right of the upper-left quadrant: that is where the
+# three connectors read as a magnifier rather than crossing the inset.
 GROUNDTRUTH_MAP = {
     #"HYDRATION_ONE": ("Hydration_one.tif", 25000),
-    # "LI_EXPULSION_ONE_50FPS": ("Li_Expulsion_1_50fps.tif", 20000),
-    #"LI_EXPULSION_ONE_10FPS": ("Li_Expulsion_1x10.tif", 20000),
+    # The three Li_Expulsion stacks below are AI frame-interpolated from
+    # Li_Expulsion_1.tif and carry the noise that interpolation cost them,
+    # restored by correct_upsampled_noise.py. Use the _noise_corrected copies.
+    # "LI_EXPULSION_ONE_50FPS": ("Li_Expulsion_1_x50_noise_corrected.tif", 20000),
+    # "LI_EXPULSION_ONE_10FPS": ("Li_Expulsion_1x10_noise_corrected.tif", 20000, (230,510,50)),
+    "LI_EXPULSION_ONE_10FPS_SQUARE": ("Li_Expulsion_1x10_square_noise_corrected.tif", 20000, (230,400,50)),
+    #"LI_EXPULSION_ONE_50FPS_SQUARE": ("Li_Expulsion_1_x50_square_noise_corrected.tif", 20000, (230,400,50)),
     #"LI_EXPULSION_ONE_ORIGINAL": ("Li_Expulsion_1.tif", 20000),    
     #"LI_EXPULSION_TWO": ("Li_Expulsion_2.tif", 20000),
     #"SI_LITHIATION_ONE": ("Si_Lithiation.tif", 20000),
-    "EDS_AEROSPACE_ONE_10FPS_downscale": ("EDS_aerospace_1x10 _halfres.tif", 20000),
-    "EDS_AEROSPACE_TWO_10FPS_downscale":   ("EDS_aerospace_2x10_halfres.tif", 20000),
-    "EDS_AEROSPACE_ONE_downscale": ("EDS_aerospace_1_halfres.tif", 20000),
-    "EDS_AEROSPACE_TWO_downscale":   ("EDS_aerospace_halfres.tif", 20000)
+    #"EDS_AEROSPACE_ONE_10FPS_downscale": ("EDS_aerospace_1x10 _halfres.tif", 20000),
+    #"EDS_AEROSPACE_TWO_10FPS_downscale":   ("EDS_aerospace_2x10_halfres.tif", 20000),
+    #"EDS_AEROSPACE_ONE_downscale": ("EDS_aerospace_1_halfres.tif", 20000),
+    #"EDS_AEROSPACE_TWO_downscale":   ("EDS_aerospace_halfres.tif", 20000)
     #"TITANIUM_STRAIN_ONE": ("Titanium_strain.tif", 20000)
 }
 
 GROUNDTRUTH_NAMES = list(GROUNDTRUTH_MAP.keys())
 
 
+def _publication_roi(gt_name):
+    """This dataset's (top, left, size) publication ROI, or None."""
+    entry = GROUNDTRUTH_MAP[gt_name]
+    return entry[2] if len(entry) > 2 else None
+
+
+def publication_options_for(config, gt_name):
+    """config's publication template carrying this dataset's own ROI, or None
+    when the run was not asked for publication output."""
+    if config.publication_images is None:
+        return None
+    return dataclasses.replace(config.publication_images,
+                               roi=_publication_roi(gt_name))
+
+
 def _ground_truth_path(gt_name):
-    filename, _ = GROUNDTRUTH_MAP[gt_name]
+    filename = GROUNDTRUTH_MAP[gt_name][0]
     if not os.path.splitext(filename)[1]:
         filename = filename + ".tif"
     return str(DEFAULT_SAVE_DIR / filename)
@@ -150,11 +181,45 @@ class RunConfig:
     """Everything run_sampler needs beyond one task's own parameters -- both
     experiments_main.py and experiment_flow_smoothing_sweep.py build one of
     these once and pass it to every task."""
-    output_dir: str
     limit_number_of_frames_to: Optional[int]
     debug_images_dict: Optional[dict]
     log_path: str
     line_profile_enabled: bool = False
+    #: Template for the _hr companion streams; its roi is replaced per
+    #: dataset by publication_options_for(). None writes plain streams only.
+    publication_images: Optional[PublicationOptions] = None
+
+
+#: Root of the debug image tree, one directory per run, beside each script's
+#: own sweep-level CSV and JSON rather than inside it.
+#:
+#: Windows refuses to create a directory once its absolute path reaches 248
+#: characters, and reports paths past 260 as "path not found" rather than as
+#: too long. The debug images written inside a run's directory add another
+#: 30-60 on top of it, so debug_output_dir's components are held to the
+#: parameters the sweeps actually vary.
+DEBUG_OUTPUT_ROOT = "debug"
+
+
+def debug_output_dir(gt_name, scanned_pixel_percent, alpha,
+                     adaptive_fraction, temporal_residual_cutoff,
+                     temporal_residual_confidence_scale, sample_sequence,
+                     extra_path_parts=()):
+    """The directory one run writes its debug images to.
+
+    Every parameter a caller sweeps has to appear here or in
+    extra_path_parts; two runs differing only in a parameter the path omits
+    land in the same directory and overwrite each other's figures.
+    """
+    return os.path.join(
+        DEBUG_OUTPUT_ROOT, gt_name,
+        f"sparsity_{scanned_pixel_percent}",
+        f"alpha_{alpha}",
+        f"adaptive_{adaptive_fraction}",
+        f"temporal_cutoff_{temporal_residual_cutoff}"
+        f"_confidence_scale_{temporal_residual_confidence_scale}",
+        str(sample_sequence),
+        *extra_path_parts)
 
 
 def run_sampler(config: RunConfig, gt_name, scanned_pixel_percent, sampler_type,
@@ -205,6 +270,7 @@ def run_sampler(config: RunConfig, gt_name, scanned_pixel_percent, sampler_type,
     """
     local_results = []
     t_overall_start = time.perf_counter()
+    publication_images = publication_options_for(config, gt_name)
 
     log(config.log_path,
         f"Starting: {sampler_type} | interpol={interpol_method} | {gt_name} | "
@@ -237,6 +303,7 @@ def run_sampler(config: RunConfig, gt_name, scanned_pixel_percent, sampler_type,
                 temporalResidualCutoff=temporal_residual_cutoff,
                 temporalResidualConfidenceScale=temporal_residual_confidence_scale,
                 debugImages=config.debug_images_dict,
+                publicationImages=publication_images,
                 **(extra_sampler_kwargs or {}),
             )
         else:
@@ -245,28 +312,16 @@ def run_sampler(config: RunConfig, gt_name, scanned_pixel_percent, sampler_type,
                 sparsityPercent=scanned_pixel_percent,
                 limit_number_of_frames_to=config.limit_number_of_frames_to,
                 groundTruthPath=ground_truth_path,
+                publicationImages=publication_images,
             )
 
         trueNumberOfFrames = sampler.numberOfFrames
 
-        # interpol_method is part of the path: without it a cubic run would
-        # overwrite the linear run's figures for the same configuration.
-        # adaptive_fraction likewise, or a refined run would overwrite the
-        # unrefined one it is meant to be compared against. extra_path_parts
-        # does the same job for whatever else a caller is sweeping.
-        # temporalResidualCutoff is included unconditionally (like alpha
-        # above, irrelevant-but-present for some combinations) rather than
-        # only when temporal_method=="temporal_variance", so a sweep over it
-        # can't collide two runs into the same directory.
-        example_dir = os.path.join(
-            config.output_dir, "examples", sampler_type, f"interpol_{interpol_method}",
-            f"sparsity_{scanned_pixel_percent}", gt_name,
-            f"sampler_{has_temporal_sampler}_reconstruction_{has_temporal_reconstruction}",
-            f"temporalMethod_{temporal_method}",
-            f"temporalResidualCutoff_{temporal_residual_cutoff}",
-            f"temporalResidualConfidenceScale_{temporal_residual_confidence_scale}",
-            f"sampleSequence_{sample_sequence}",
-            f"alpha_{alpha}", f"adaptive_{adaptive_fraction}", *extra_path_parts)
+        example_dir = debug_output_dir(
+            gt_name, scanned_pixel_percent, alpha,
+            adaptive_fraction, temporal_residual_cutoff,
+            temporal_residual_confidence_scale, sample_sequence,
+            extra_path_parts)
         os.makedirs(example_dir, exist_ok=True)
 
         t_run_start = time.perf_counter()

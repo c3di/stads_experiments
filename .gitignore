@@ -74,6 +74,7 @@ src/
 
 # Generated output files
 plots*/
+debug/
 plots_after_report.zip
 movie_analysis/
 analysis/

@@ -17,6 +17,7 @@ from sem_noise_generator import SEMNoiseModel
 from experiment_common import (
     GROUNDTRUTH_MAP, GROUNDTRUTH_NAMES, _ground_truth_path, log,
     debug_images_dict, RunConfig, run_sampler, BASE_CSV_FIELDNAMES,
+    debug_output_dir, DEBUG_OUTPUT_ROOT,
     write_results, LINE_PROFILE_ENABLED,
 )
 from experiment_run_manager import (
@@ -69,7 +70,6 @@ JSON_PATH = os.path.join(output_dir, "experiments_state.json")
 EXPERIMENT_MANAGER = None
 
 RUN_CONFIG = RunConfig(
-    output_dir=output_dir,
     limit_number_of_frames_to=limit_number_of_frames_to,
     debug_images_dict=DEBUG_IMAGES_DICT,
     log_path=LOGFILE,
@@ -87,7 +87,7 @@ semNoiseModel.load_model("sem_noise_model.pkl")
 # Load video
 # --------------------
 def load_video(gt_name, limit_number_of_frames_to=None, scanned_pixel_percent=None):
-    _, total_dwell_time = GROUNDTRUTH_MAP[gt_name]
+    total_dwell_time = GROUNDTRUTH_MAP[gt_name][1]
     video = get_frames_from_tif(_ground_truth_path(gt_name), frame_limit=limit_number_of_frames_to)
     if video.ndim == 4 and video.shape[-1] == 1:
         video = video.squeeze(-1)
@@ -107,13 +107,14 @@ def run_low_dwell_time_sampler(gt_name, scanned_pixel_percent):
     log(LOGFILE, f"Starting: LOW-DWELL | {gt_name} | S={scanned_pixel_percent}%")
     try:
         gt_video = load_video(gt_name, limit_number_of_frames_to)
-        _, t_high = GROUNDTRUTH_MAP[gt_name]
+        t_high = GROUNDTRUTH_MAP[gt_name][1]
         s = scanned_pixel_percent / 100.0
         t_target = s * t_high
         rec_video = []
         PSNRs = []
         SSIMs = []
-        example_dir = os.path.join(output_dir, "examples", "low_dwell", f"sparsity_{scanned_pixel_percent}", gt_name)
+        example_dir = os.path.join(DEBUG_OUTPUT_ROOT, "low_dwell", gt_name,
+                                   f"sparsity_{scanned_pixel_percent}")
         os.makedirs(example_dir, exist_ok=True)
         for i, frame in enumerate(gt_video):
             noisy_frame = semNoiseModel.generate_low_dwell_time_image(frame, t_high=t_high, t_target=t_target)
@@ -151,17 +152,12 @@ def run_low_dwell_time_sampler(gt_name, scanned_pixel_percent):
 def run_sampler_worker(config, experiment):
     """Worker function that just runs the sampler and returns result."""
     task = experiment.to_tuple()
-    example_dir = os.path.join(
-        config.output_dir, "examples", experiment.sampler_type,
-        f"interpol_{experiment.interpol_method}",
-        f"sparsity_{experiment.scanned_pixel_percent}", experiment.gt_name,
-        f"sampler_{experiment.has_temporal_sampler}_reconstruction_{experiment.has_temporal_reconstruction}",
-        f"temporalMethod_{experiment.temporal_method}",
-        f"temporalResidualCutoff_{experiment.temporal_residual_cutoff}",
-        f"temporalResidualConfidenceScale_{experiment.temporal_residual_confidence_scale}",
-        f"sampleSequence_{experiment.sample_sequence}",
-        f"alpha_{experiment.alpha}", f"adaptive_{experiment.adaptive_fraction}"
-    )
+    example_dir = debug_output_dir(
+        experiment.gt_name, experiment.scanned_pixel_percent,
+        experiment.alpha, experiment.adaptive_fraction,
+        experiment.temporal_residual_cutoff,
+        experiment.temporal_residual_confidence_scale,
+        experiment.sample_sequence)
     try:
         result = run_sampler(config, *task)
         return (experiment, result, example_dir, None)
