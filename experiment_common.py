@@ -237,6 +237,7 @@ def run_sampler(config: RunConfig, gt_name, scanned_pixel_percent, sampler_type,
                 pdfTemporalSigma=pdf_temporal_sigma,
                 temporalResidualCutoff=temporal_residual_cutoff,
                 temporalResidualConfidenceScale=temporal_residual_confidence_scale,
+                computeSsim=True,
                 debugImages=config.debug_images_dict,
                 **(extra_sampler_kwargs or {}),
             )
