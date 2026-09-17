@@ -32,8 +32,8 @@ logging.basicConfig(level=logging.INFO)
 # --------------------
 INTERPOLATION_METHODS: List[str] = ["cubic"]
 
-SCANNED_PIXELS_PERCENTAGES: List[float] = [0.1, 0.5, 1.0, 5.0]
-ALPHAS: List[Optional[float]] = [0.25, 0.5, 1.0, 3.0, 5.0]
+SCANNED_PIXELS_PERCENTAGES: List[float] = [0.1, 1.0, 5.0]
+ALPHAS: List[Optional[float]] = [3.0, 5.0]
 TEMPORAL_SAMPLING_OPTIONS: List[bool] = [True]
 TEMPORAL_RECONSTRUCTION_OPTIONS: List[bool] = [True]
 
@@ -43,12 +43,12 @@ TEMPORAL_RESIDUAL_CONFIDENCE_SCALES: List[float] = [100.0, 250.0]#, 500.0]
 ADAPTIVE_REFINEMENT_FRACTIONS: List[float] = [0.1, 0.3]
 MIN_DENSITY_GAMMAS: List[float] = [0.1]
 
-SAMPLE_SEQUENCES: List[str] = ["uniform", "stratified", "halton"]
+SAMPLE_SEQUENCES: List[str] = ["uniform", "stratified"]
 
 DEBUG_IMAGES_ENABLED = True
 DEBUG_IMAGES_DICT = (
-    #debug_images_dict({"reconstruction", "samples", "pdf", "pdf_spatial", "pdf_temporal", "flow", "temporal_variance"})
-    debug_images_dict({"reconstruction", "samples", "pdf"})
+    debug_images_dict({"reconstruction", "samples", "pdf", "pdf_spatial", "pdf_temporal", "flow", "temporal_variance"})
+    #debug_images_dict({"reconstruction", "samples", "pdf"})
     if DEBUG_IMAGES_ENABLED else None
 )
 
@@ -64,7 +64,7 @@ STANDARD_WORKER_POOL_SIZE = 6
 #   ExperimentRunManager.NO_JSON - No JSON persistence (original behavior)
 #   ExperimentRunManager.USE_ONLY - Use only JSON file, skip assembly, run only unfinished
 #   ExperimentRunManager.USE_AND_UPDATE - Merge assembly with JSON, filter finished, add new configs
-JSON_MODE = ExperimentRunManager.USE_AND_UPDATE
+JSON_MODE = ExperimentRunManager.NO_JSON
 JSON_PATH = os.path.join(output_dir, "experiments_state.json")
 
 # Global experiment run manager
@@ -108,7 +108,7 @@ def run_low_dwell_time_sampler(gt_name, scanned_pixel_percent):
     local_results = []
     log(LOGFILE, f"Starting: LOW-DWELL | {gt_name} | S={scanned_pixel_percent}%")
     try:
-        gt_video = load_video(gt_name, limit_number_of_frames_to)
+        gt_video = load_video(gt_name)
         _, t_high = GROUNDTRUTH_MAP[gt_name]
         s = scanned_pixel_percent / 100.0
         t_target = s * t_high
@@ -209,7 +209,7 @@ def main():
 
     # Build experiment list
     assembled_experiments = build_experiment_list()
-    experiments_to_run = EXPERIMENT_MANAGER.initialize(assembled_experiments)
+    experiments_to_run = [] #EXPERIMENT_MANAGER.initialize(assembled_experiments)
 
     log(LOGFILE, f"===== Starting Experiment Run =====")
     log(LOGFILE, f"JSON Mode: {JSON_MODE}")
@@ -271,7 +271,11 @@ def main():
     log(LOGFILE, f"[JSON] Final state saved to {JSON_PATH}")
 
     # Low-dwell tasks (currently disabled)
+    low_dwell_gts = ["LI_EXPULSION_ONE", "LI_EXPULSION_TWO"]
     low_dwell_tasks = []
+    for gt_name in low_dwell_gts:
+        for target_pixel_percent in SCANNED_PIXELS_PERCENTAGES:  # Example value, adjust as needed
+            low_dwell_tasks.append((gt_name, target_pixel_percent))
     with ProcessPoolExecutor(max_workers=STANDARD_WORKER_POOL_SIZE) as executor:
         futures = {executor.submit(run_low_dwell_time_sampler, *task): task for task in low_dwell_tasks}
         for future in as_completed(futures):
