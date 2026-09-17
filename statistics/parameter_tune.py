@@ -147,10 +147,17 @@ def main():
             print(f"\n  --- scanned_pixel_percent = {sparsity} ---")
             
             # Filter for this sparsity level
-            sparsity_df = gt_df[gt_df['scanned_pixel_percent'] == sparsity]
+            sparsity_df = gt_df[gt_df['scanned_pixel_percent'] == sparsity].copy()
             
             if len(sparsity_df) == 0:
                 continue
+            
+            # Sort by PSNR mean (descending) and assign ranks
+            sparsity_df['psnr_rank'] = sparsity_df['psnr_mean'].rank(method='min', ascending=False)
+            # Sort by SSIM mean (descending) and assign ranks
+            sparsity_df['ssim_rank'] = sparsity_df['ssim_mean'].rank(method='min', ascending=False)
+            # Compute combined rank (sum of squared ranks)
+            sparsity_df['combined_rank'] = sparsity_df['psnr_rank']**2 + sparsity_df['ssim_rank']**2
             
             # Find best by PSNR mean
             best_psnr_idx = sparsity_df['psnr_mean'].idxmax()
@@ -160,14 +167,23 @@ def main():
             best_ssim_idx = sparsity_df['ssim_mean'].idxmax()
             best_ssim = sparsity_df.loc[best_ssim_idx]
             
+            # Find best combined (lowest sum of squared ranks)
+            best_combined_idx = sparsity_df['combined_rank'].idxmin()
+            best_combined = sparsity_df.loc[best_combined_idx]
+            
             # Print best PSNR configuration
             print(f"    Best PSNR (mean={best_psnr['psnr_mean']:.4f}):")
-            identity_str = ", ".join([f"{k}={v}" for k, v in best_psnr.items() if k not in stat_cols])
+            identity_str = ", ".join([f"{k}={v}" for k, v in best_psnr.items() if k not in stat_cols + ['psnr_rank', 'ssim_rank', 'combined_rank']])
             print(f"      {identity_str}")
             
             # Print best SSIM configuration
             print(f"    Best SSIM (mean={best_ssim['ssim_mean']:.4f}):")
-            identity_str = ", ".join([f"{k}={v}" for k, v in best_ssim.items() if k not in stat_cols])
+            identity_str = ", ".join([f"{k}={v}" for k, v in best_ssim.items() if k not in stat_cols + ['psnr_rank', 'ssim_rank', 'combined_rank']])
+            print(f"      {identity_str}")
+            
+            # Print best combined configuration
+            print(f"    Best Combined (PSNR rank={int(best_combined['psnr_rank'])}, SSIM rank={int(best_combined['ssim_rank'])}, score={best_combined['combined_rank']:.0f}):")
+            identity_str = ", ".join([f"{k}={v}" for k, v in best_combined.items() if k not in stat_cols + ['psnr_rank', 'ssim_rank', 'combined_rank']])
             print(f"      {identity_str}")
 
 
