@@ -19,9 +19,9 @@ Workflow 2 (--plot):
   - Ground truth distinguished by color
 
 Usage:
-    python parameter_tune.py --analyze [csv_file]
-    python parameter_tune.py --plot
+    python parameter_tune.py [--analyze [csv_file]] [--plot]
     
+Default (no args): Runs both workflows in sequence (analyze then plot)
 Default CSV for --analyze: plots/per_frame_results.csv
 """
 
@@ -33,6 +33,7 @@ import numpy as np
 import matplotlib
 matplotlib.use('Agg')  # Non-interactive backend for saving plots
 import matplotlib.pyplot as plt
+import seaborn as sns
 
 
 def create_summary_plots():
@@ -76,38 +77,31 @@ def create_summary_plots():
         if len(sparsity_df) == 0:
             continue
         
-        # Get unique ground truths
-        ground_truths = sorted(sparsity_df['source_gt'].unique())
-        
-        # Create color map for ground truths
-        colors = plt.cm.tab10(np.linspace(0, 1, len(ground_truths)))
-        color_map = dict(zip(ground_truths, colors))
-        
         # Create figure
-        fig, ax = plt.subplots(figsize=(12, 8))
+        plt.figure(figsize=(12, 8))
         
-        # Plot each ground truth with its own color
-        for gt in ground_truths:
-            gt_data = sparsity_df[sparsity_df['source_gt'] == gt]
-            ax.scatter(
-                gt_data['psnr_mean'],
-                gt_data['ssim_mean'],
-                color=color_map[gt],
-                label=gt,
-                alpha=0.7,
-                s=100
-            )
+        # Use seaborn scatterplot with hue for ground truth
+        ax = sns.scatterplot(
+            data=sparsity_df,
+            x='psnr_mean',
+            y='ssim_mean',
+            hue='source_gt',
+            palette='tab10',
+            alpha=0.7,
+            s=100
+        )
         
-        ax.set_xlabel('PSNR (mean)', fontsize=12)
-        ax.set_ylabel('SSIM (mean)', fontsize=12)
-        ax.set_title(f'PSNR vs SSIM - scanned_pixel_percent = {sparsity}', fontsize=14)
-        ax.legend(title='Ground Truth', fontsize=10)
-        ax.grid(True, alpha=0.3)
+        plt.xlabel('PSNR (mean)', fontsize=12)
+        plt.ylabel('SSIM (mean)', fontsize=12)
+        plt.title(f'PSNR vs SSIM - scanned_pixel_percent = {sparsity}', fontsize=14)
+        plt.legend(title='Ground Truth', fontsize=10, bbox_to_anchor=(1.05, 1), loc='upper left')
+        plt.grid(True, alpha=0.3)
+        plt.tight_layout()
         
         # Save plot
         plot_file = os.path.join(tune_results_dir, f'psnr_vs_ssim_sparsity_{sparsity}.png')
-        fig.savefig(plot_file, dpi=300, bbox_inches='tight')
-        plt.close(fig)
+        plt.savefig(plot_file, dpi=300, bbox_inches='tight')
+        plt.close()
         print(f"  Saved plot: {plot_file}")
     
     print(f"\nSummary plots created in {tune_results_dir}")
@@ -120,7 +114,7 @@ def main():
     )
     
     # Mutually exclusive group for workflow selection
-    group = parser.add_mutually_exclusive_group(required=True)
+    group = parser.add_mutually_exclusive_group(required=False)
     group.add_argument(
         '--analyze',
         action='store_true',
@@ -141,11 +135,16 @@ def main():
     
     args = parser.parse_args()
     
-    # Route to appropriate workflow
-    if args.analyze:
+    # Default behavior: run both workflows if no arguments provided
+    if not args.analyze and not args.plot:
         run_analysis(args.csv_file)
-    elif args.plot:
         create_summary_plots()
+    else:
+        # Route to appropriate workflow
+        if args.analyze:
+            run_analysis(args.csv_file)
+        elif args.plot:
+            create_summary_plots()
 
 
 def run_analysis(csv_path):
