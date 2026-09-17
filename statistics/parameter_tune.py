@@ -2,18 +2,27 @@
 """
 Parameter Tuning Analysis Script
 
-Takes a per_frame_results CSV, filters for adaptive sampler runs, and:
-1. Identifies all ground truths used
-2. For each ground truth:
-   a. Aggregates frame-level results by experiment identity
-   b. Computes statistics (mean, std, max, min) for PSNR and SSIM
-   c. Writes results to a separate CSV per ground truth
-3. For each scanned_pixel_percent, prints best configuration by PSNR and SSIM mean
+Workflow 1 (--analyze):
+  Takes a per_frame_results CSV, filters for adaptive sampler runs, and:
+  1. Identifies all ground truths used
+  2. For each ground truth:
+     a. Aggregates frame-level results by experiment identity
+     b. Computes statistics (mean, std, max, min) for PSNR and SSIM
+     c. Writes results to statistics/tune_results/{gt_name}_parameter_analysis.csv
+  3. For each ground truth and scanned_pixel_percent, prints best configuration
+     by PSNR mean, SSIM mean, and combined rank (sum of squared ranks)
+
+Workflow 2 (--plot):
+  Reads all aggregated CSVs from statistics/tune_results/ and creates:
+  - Summary scatter plots for each scanned_pixel_percent
+  - PSNR on X axis, SSIM on Y axis
+  - Ground truth distinguished by color
 
 Usage:
-    python parameter_tune.py [csv_file]
+    python parameter_tune.py --analyze [csv_file]
+    python parameter_tune.py --plot
     
-Default CSV: plots/per_frame_results.csv
+Default CSV for --analyze: plots/per_frame_results.csv
 """
 
 import argparse
@@ -21,23 +30,126 @@ import os
 from pathlib import Path
 import pandas as pd
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')  # Non-interactive backend for saving plots
+import matplotlib.pyplot as plt
+
+
+def create_summary_plots():
+    """Workflow 2: Create summary scatter plots from aggregated CSV files."""
+    tune_results_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tune_results")
+    
+    if not os.path.exists(tune_results_dir):
+        print(f"Error: tune_results directory not found: {tune_results_dir}")
+        print("Please run --analyze first to generate the aggregated CSV files.")
+        return
+    
+    # Find all aggregated CSV files
+    csv_files = [f for f in os.listdir(tune_results_dir) if f.endswith('_parameter_analysis.csv')]
+    
+    if not csv_files:
+        print(f"No aggregated CSV files found in {tune_results_dir}")
+        print("Please run --analyze first to generate the aggregated CSV files.")
+        return
+    
+    print(f"Found {len(csv_files)} aggregated CSV files")
+    
+    # Load all data
+    all_data = []
+    for csv_file in csv_files:
+        file_path = os.path.join(tune_results_dir, csv_file)
+        df = pd.read_csv(file_path)
+        # Extract gt_name from filename (remove _parameter_analysis.csv)
+        gt_name = csv_file.replace('_parameter_analysis.csv', '')
+        df['source_gt'] = gt_name
+        all_data.append(df)
+    
+    combined_df = pd.concat(all_data, ignore_index=True)
+    
+    # Get unique scanned_pixel_percent values
+    sparsity_levels = sorted(combined_df['scanned_pixel_percent'].unique())
+    
+    # Create a plot for each sparsity level
+    for sparsity in sparsity_levels:
+        sparsity_df = combined_df[combined_df['scanned_pixel_percent'] == sparsity]
+        
+        if len(sparsity_df) == 0:
+            continue
+        
+        # Get unique ground truths
+        ground_truths = sorted(sparsity_df['source_gt'].unique())
+        
+        # Create color map for ground truths
+        colors = plt.cm.tab10(np.linspace(0, 1, len(ground_truths)))
+        color_map = dict(zip(ground_truths, colors))
+        
+        # Create figure
+        fig, ax = plt.subplots(figsize=(12, 8))
+        
+        # Plot each ground truth with its own color
+        for gt in ground_truths:
+            gt_data = sparsity_df[sparsity_df['source_gt'] == gt]
+            ax.scatter(
+                gt_data['psnr_mean'],
+                gt_data['ssim_mean'],
+                color=color_map[gt],
+                label=gt,
+                alpha=0.7,
+                s=100
+            )
+        
+        ax.set_xlabel('PSNR (mean)', fontsize=12)
+        ax.set_ylabel('SSIM (mean)', fontsize=12)
+        ax.set_title(f'PSNR vs SSIM - scanned_pixel_percent = {sparsity}', fontsize=14)
+        ax.legend(title='Ground Truth', fontsize=10)
+        ax.grid(True, alpha=0.3)
+        
+        # Save plot
+        plot_file = os.path.join(tune_results_dir, f'psnr_vs_ssim_sparsity_{sparsity}.png')
+        fig.savefig(plot_file, dpi=300, bbox_inches='tight')
+        plt.close(fig)
+        print(f"  Saved plot: {plot_file}")
+    
+    print(f"\nSummary plots created in {tune_results_dir}")
 
 
 def main():
     # Parse arguments
     parser = argparse.ArgumentParser(
-        description='Analyze adaptive sampler results for parameter tuning'
+        description='Parameter tuning analysis and visualization'
     )
+    
+    # Mutually exclusive group for workflow selection
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument(
+        '--analyze',
+        action='store_true',
+        help='Run analysis workflow: aggregate results and find best configurations'
+    )
+    group.add_argument(
+        '--plot',
+        action='store_true',
+        help='Run plotting workflow: create summary scatter plots from aggregated CSVs'
+    )
+    
     parser.add_argument(
         'csv_file',
         nargs='?',
         default=os.path.join('plots', 'per_frame_results.csv'),
-        help='Input CSV file (default: plots/per_frame_results.csv)'
+        help='Input CSV file for --analyze (default: plots/per_frame_results.csv)'
     )
+    
     args = parser.parse_args()
     
-    csv_path = args.csv_file
-    
+    # Route to appropriate workflow
+    if args.analyze:
+        run_analysis(args.csv_file)
+    elif args.plot:
+        create_summary_plots()
+
+
+def run_analysis(csv_path):
+    """Workflow 1: Analyze adaptive sampler results and find best configurations."""
     if not os.path.exists(csv_path):
         print(f"Error: CSV file not found: {csv_path}")
         return
