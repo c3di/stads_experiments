@@ -1,16 +1,15 @@
 import os
 import time
 import threading
+from types import SimpleNamespace
 from typing import Optional, List
-
-from tifffile import tifffile
 
 import numpy as np
 from concurrent.futures import ProcessPoolExecutor, as_completed, wait, FIRST_COMPLETED
 import logging
 import traceback
 
-from stads.debug_images import save_error_map, save_pixel_wise_psnr_plots
+from stads.debug_images import DebugImageSet, LOW_DWELL_REGISTRY
 from stads.evaluation import calculate_psnr, calculate_ssim
 from stads.read_images import get_frames_from_tif
 from sem_noise_generator import SEMNoiseModel
@@ -19,6 +18,7 @@ from experiment_common import (
     GROUNDTRUTH_MAP, GROUNDTRUTH_NAMES, _ground_truth_path, log,
     debug_images_dict, RunConfig, run_sampler, BASE_CSV_FIELDNAMES,
     debug_output_dir, DEBUG_OUTPUT_ROOT, PublicationOptions,
+    publication_options_for,
     write_results, LINE_PROFILE_ENABLED,
 )
 from experiment_run_manager import (
@@ -121,36 +121,48 @@ def load_video(gt_name, limit_number_of_frames_to=None, scanned_pixel_percent=No
     return video
 
 
+def low_dwell_debug_images(gt_name, image_shape):
+    """The reference's debug stacks, configured like a sampler's.
+
+    DebugImageSet reads nothing off its first argument but `imageShape` -- for
+    the roi bounds check, and as the publication renderer's test for whether a
+    kind's output is a picture of the frame and so can carry a zoom inset. The
+    baseline runs no sampler, so it passes a stand-in holding just that.
+    """
+    kinds = {cls.kind for cls in LOW_DWELL_REGISTRY}
+    overrides = {kind: enabled for kind, enabled in (DEBUG_IMAGES_DICT or {}).items()
+                 if kind in kinds}
+    return DebugImageSet(
+        SimpleNamespace(imageShape=image_shape), LOW_DWELL_REGISTRY,
+        overrides=overrides,
+        publication=publication_options_for(RUN_CONFIG, gt_name))
+
+
 def run_low_dwell_time_sampler(gt_name, scanned_pixel_percent):
     local_results = []
     log(LOGFILE, f"Starting: LOW-DWELL | {gt_name} | S={scanned_pixel_percent}%")
+    debugImages = None
     try:
         gt_video = load_video(gt_name, limit_number_of_frames_to)
         t_high = GROUNDTRUTH_MAP[gt_name][1]
         s = scanned_pixel_percent / 100.0
         t_target = s * t_high
-        rec_video = []
         PSNRs = []
         SSIMs = []
-        example_dir = os.path.join(DEBUG_OUTPUT_ROOT, "low_dwell", gt_name,
-                                   f"sparsity_{scanned_pixel_percent}")
-        os.makedirs(example_dir, exist_ok=True)
+        example_dir = (os.path.join(DEBUG_OUTPUT_ROOT, "low_dwell", gt_name,
+                                    f"sparsity_{scanned_pixel_percent}")
+                       if DEBUG_IMAGES_DICT else None)
+        debugImages = low_dwell_debug_images(gt_name, gt_video[0].shape)
         for i, frame in enumerate(gt_video):
             noisy_frame = semNoiseModel.generate_low_dwell_time_image(
                 frame, t_high=t_high, t_target=t_target)
-            rec_video.append(noisy_frame)
-            psnr = calculate_psnr(frame, noisy_frame)
+            PSNRs.append(calculate_psnr(frame, noisy_frame))
             ssim, _grad, _full = calculate_ssim(frame, noisy_frame)
-            PSNRs.append(psnr)
             SSIMs.append(ssim)
-            tifffile.imwrite(os.path.join(example_dir, f"frame_{i:03d}_low_dwell.tiff"), noisy_frame)
-            tifffile.imwrite(os.path.join(example_dir, f"frame_{i:03d}_abs_error_map.tiff"),
-                             save_error_map(frame, noisy_frame))
-            tifffile.imwrite(os.path.join(example_dir, f"frame_{i:03d}_pixelwise_psnr.tiff"),
-                             save_pixel_wise_psnr_plots(frame, noisy_frame))
-        rec_video = np.array(rec_video)
-        T = rec_video.shape[0]
-        for frame_idx in range(T):
+            debugImages.reconstruction.process(i, example_dir, noisy_frame)
+            debugImages.error.process(i, example_dir, frame, noisy_frame)
+            debugImages.psnr.process(i, example_dir, frame, noisy_frame)
+        for frame_idx in range(len(PSNRs)):
             local_results.append({
                 "sampler": "low_dwell", "withTemporalSampler": None,
                 "withTemporalReconstruction": None, "gt_name": gt_name,
@@ -164,6 +176,11 @@ def run_low_dwell_time_sampler(gt_name, scanned_pixel_percent):
     except Exception as e:
         log(LOGFILE, f"[ERROR] LOW-DWELL | {gt_name} | S={scanned_pixel_percent}% | {e}\n"
                      f"{traceback.format_exc()}")
+    finally:
+        # Finalises the multi-page TIFFs, so it has to run even on the error
+        # path or a failed run leaves unreadable stacks behind.
+        if debugImages is not None:
+            debugImages.close()
     return local_results
 
 
