@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO)
 INTERPOLATION_METHODS: List[str] = ["cubic"]
 
 SCANNED_PIXELS_PERCENTAGES: List[float] = [0.1, 0.5, 1.0, 2.0, 5.0]
-ALPHAS: List[Optional[float]] = [0.25, 0.5, 1.0, 3.0, 5.0, 10.0]
+ALPHAS: List[Optional[float]] = [0.25, 1.0, 3.0, 5.0, 10.0]
 TEMPORAL_SAMPLING_OPTIONS: List[bool] = [True]
 TEMPORAL_RECONSTRUCTION_OPTIONS: List[bool] = [True]
 
@@ -48,7 +48,7 @@ SAMPLE_SEQUENCES: List[str] = ["uniform", "stratified", "halton"]
 DEBUG_IMAGES_ENABLED = True
 DEBUG_IMAGES_DICT = (
     #debug_images_dict({"reconstruction", "samples", "pdf", "pdf_spatial", "pdf_temporal", "flow", "temporal_variance"})
-    debug_images_dict({"reconstruction", "samples", "pdf"})
+    debug_images_dict({"reconstruction", "samples"})
     if DEBUG_IMAGES_ENABLED else None
 )
 
@@ -57,6 +57,7 @@ output_dir = "plots"
 os.makedirs(output_dir, exist_ok=True)
 LOGFILE = "script_log.txt"
 CSV_PATH = os.path.join(output_dir, "per_frame_results.csv")
+OVERWRITE_CSV = True #set to True if you want to overwrite the existing CSV file, False to append to it
 STANDARD_WORKER_POOL_SIZE = 6
 
 # JSON persistence configuration
@@ -99,6 +100,7 @@ def load_video(gt_name, limit_number_of_frames_to=None, scanned_pixel_percent=No
         noisy_video = []
         for frame in video:
             noisy_frame = semNoiseModel.generate_low_dwell_time_image(frame, t_high=t_high, t_target=t_target)
+            ssim, _, _ = calculate_ssim(frame, noisy_frame)
             noisy_video.append(noisy_frame)
         video = np.array(noisy_video)
     return video
@@ -121,7 +123,7 @@ def run_low_dwell_time_sampler(gt_name, scanned_pixel_percent):
             noisy_frame = semNoiseModel.generate_low_dwell_time_image(frame, t_high=t_high, t_target=t_target)
             rec_video.append(noisy_frame)
             psnr = calculate_psnr(frame, noisy_frame)
-            ssim = calculate_ssim(frame, noisy_frame)
+            ssim, _, _ = calculate_ssim(frame, noisy_frame)
             PSNRs.append(psnr)
             SSIMs.append(ssim)
             tifffile.imwrite(os.path.join(example_dir, f"frame_{i:03d}_low_dwell.tiff"), noisy_frame)
@@ -201,7 +203,8 @@ def main():
 
     if os.path.exists(LOGFILE):
         os.remove(LOGFILE)
-    if os.path.exists(CSV_PATH):
+    # Note: CSV file is NOT deleted to preserve results from previous runs
+    if OVERWRITE_CSV and os.path.exists(CSV_PATH):
         os.remove(CSV_PATH)
 
     # Initialize experiment run manager
@@ -270,8 +273,12 @@ def main():
     EXPERIMENT_MANAGER.finalize()
     log(LOGFILE, f"[JSON] Final state saved to {JSON_PATH}")
 
-    # Low-dwell tasks (currently disabled)
+    # Low-dwell tasks
+    low_dwell_gts = ["LI_EXPULSION_ONE_ORIGINAL", "LI_EXPULSION_TWO_ORIGINAL", "LI_EXPULSION_ONE_10FPS", "LI_EXPULSION_TWO_10FPS", "HYDRATION_ONE"]
     low_dwell_tasks = []
+    for gt_name in low_dwell_gts:
+        for target_pixel_percent in SCANNED_PIXELS_PERCENTAGES: 
+            low_dwell_tasks.append((gt_name, target_pixel_percent))
     with ProcessPoolExecutor(max_workers=STANDARD_WORKER_POOL_SIZE) as executor:
         futures = {executor.submit(run_low_dwell_time_sampler, *task): task for task in low_dwell_tasks}
         for future in as_completed(futures):
