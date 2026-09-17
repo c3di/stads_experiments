@@ -296,6 +296,31 @@ def run_analysis(csv_path):
             print(f"    Best Combined (PSNR rank={int(best_combined['psnr_rank'])}, SSIM rank={int(best_combined['ssim_rank'])}, score={best_combined['combined_rank']:.0f}):")
             identity_str = ", ".join([f"{k}={v}" for k, v in best_combined.items() if k not in stat_cols + ['psnr_rank', 'ssim_rank', 'combined_rank']])
             print(f"      {identity_str}")
+            
+            # Find worst configurations (1 each for PSNR, SSIM, combined)
+            worst_psnr_idx = sparsity_df['psnr_mean'].idxmin()
+            worst_psnr = sparsity_df.loc[worst_psnr_idx]
+            
+            worst_ssim_idx = sparsity_df['ssim_mean'].idxmin()
+            worst_ssim = sparsity_df.loc[worst_ssim_idx]
+            
+            worst_combined_idx = sparsity_df['combined_rank'].idxmax()
+            worst_combined = sparsity_df.loc[worst_combined_idx]
+            
+            # Print worst PSNR configuration
+            print(f"    Worst PSNR (mean={worst_psnr['psnr_mean']:.4f}):")
+            identity_str = ", ".join([f"{k}={v}" for k, v in worst_psnr.items() if k not in stat_cols + ['psnr_rank', 'ssim_rank', 'combined_rank']])
+            print(f"      {identity_str}")
+            
+            # Print worst SSIM configuration
+            print(f"    Worst SSIM (mean={worst_ssim['ssim_mean']:.4f}):")
+            identity_str = ", ".join([f"{k}={v}" for k, v in worst_ssim.items() if k not in stat_cols + ['psnr_rank', 'ssim_rank', 'combined_rank']])
+            print(f"      {identity_str}")
+            
+            # Print worst combined configuration
+            print(f"    Worst Combined (PSNR rank={int(worst_combined['psnr_rank'])}, SSIM rank={int(worst_combined['ssim_rank'])}, score={worst_combined['combined_rank']:.0f}):")
+            identity_str = ", ".join([f"{k}={v}" for k, v in worst_combined.items() if k not in stat_cols + ['psnr_rank', 'ssim_rank', 'combined_rank']])
+            print(f"      {identity_str}")
 
 
 if __name__ == '__main__':
