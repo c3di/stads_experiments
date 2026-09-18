@@ -138,7 +138,7 @@ def generate_entropy_statistics_plot(per_frame_results_df: pd.DataFrame, output_
 	plt.close(fig)
 
 
-def analyze_movies(input_path: str | Path, output_dir: str | Path = "plots/statistics") -> tuple[pd.DataFrame, pd.DataFrame]:
+def analyze_movies(input_path: str | Path, output_dir: str | Path = "output/statistics") -> tuple[pd.DataFrame, pd.DataFrame]:
 	input_path = Path(input_path)
 	output_dir = Path(output_dir)
 	output_dir.mkdir(parents=True, exist_ok=True)

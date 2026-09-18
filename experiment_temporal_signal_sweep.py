@@ -64,10 +64,9 @@ DOWNSCALE_FACTORS = [1, 2, 4]
 SIGMAS = [0, 2, 4, 8]
 
 limit_number_of_frames_to = 500
-output_dir = "plots"
-os.makedirs(output_dir, exist_ok=True)
+os.makedirs(OUTPUT_ROOT, exist_ok=True)
 LOGFILE = "temporal_signal_sweep_log.txt"
-CSV_PATH = os.path.join(output_dir, "temporal_signal_sweep_results.csv")
+CSV_PATH = os.path.join(OUTPUT_ROOT, "temporal_signal_sweep_results.csv")
 STANDARD_WORKER_POOL_SIZE = 6
 
 # reconstruction + samples + temporal_variance + flow + pdf (+ its
@@ -125,7 +124,7 @@ def main():
                 ALPHA, ADAPTIVE_FRACTION, MIN_DENSITY_GAMMA,
                 temporal_method=method,
                 pdf_temporal_downscale=downscale, pdf_temporal_sigma=sigma,
-                # This sweep varies temporal_method, which debug_output_dir
+                # This sweep varies temporal_method, which run_output_dir
                 # does not name, so it is carried here -- without it both
                 # methods' figures land in the same directory.
                 extra_path_parts=(f"method_{method}", f"downscale_{downscale}",

@@ -17,7 +17,7 @@ from sem_noise_generator import SEMNoiseModel
 from experiment_common import (
     GROUNDTRUTH_MAP, GROUNDTRUTH_NAMES, _ground_truth_path, log,
     debug_images_dict, RunConfig, run_sampler, BASE_CSV_FIELDNAMES,
-    debug_output_dir, DEBUG_OUTPUT_ROOT,
+    run_output_dir, OUTPUT_ROOT,
     write_results, LINE_PROFILE_ENABLED,
 )
 from experiment_run_manager import (
@@ -52,10 +52,9 @@ DEBUG_IMAGES_DICT = (
 )
 
 limit_number_of_frames_to = None
-output_dir = "plots"
-os.makedirs(output_dir, exist_ok=True)
+os.makedirs(OUTPUT_ROOT, exist_ok=True)
 LOGFILE = "script_log.txt"
-CSV_PATH = os.path.join(output_dir, "per_frame_results.csv")
+CSV_PATH = os.path.join(OUTPUT_ROOT, "per_frame_results.csv")
 STANDARD_WORKER_POOL_SIZE = 2
 
 # JSON persistence configuration
@@ -64,7 +63,7 @@ STANDARD_WORKER_POOL_SIZE = 2
 #   ExperimentRunManager.USE_ONLY - Use only JSON file, skip assembly, run only unfinished
 #   ExperimentRunManager.USE_AND_UPDATE - Merge assembly with JSON, filter finished, add new configs
 JSON_MODE = ExperimentRunManager.NO_JSON
-JSON_PATH = os.path.join(output_dir, "experiments_state.json")
+JSON_PATH = os.path.join(OUTPUT_ROOT, "experiments_state.json")
 
 # Global experiment run manager
 EXPERIMENT_MANAGER = None
@@ -113,7 +112,7 @@ def run_low_dwell_time_sampler(gt_name, scanned_pixel_percent):
         rec_video = []
         PSNRs = []
         SSIMs = []
-        example_dir = os.path.join(DEBUG_OUTPUT_ROOT, "low_dwell", gt_name,
+        example_dir = os.path.join(OUTPUT_ROOT, "low_dwell", gt_name,
                                    f"sparsity_{scanned_pixel_percent}")
         os.makedirs(example_dir, exist_ok=True)
         for i, frame in enumerate(gt_video):
@@ -152,7 +151,7 @@ def run_low_dwell_time_sampler(gt_name, scanned_pixel_percent):
 def run_sampler_worker(config, experiment):
     """Worker function that just runs the sampler and returns result."""
     task = experiment.to_tuple()
-    example_dir = debug_output_dir(
+    example_dir = run_output_dir(
         experiment.gt_name, experiment.scanned_pixel_percent,
         experiment.alpha, experiment.adaptive_fraction,
         experiment.temporal_residual_cutoff,

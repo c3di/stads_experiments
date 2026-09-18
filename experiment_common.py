@@ -22,7 +22,10 @@ from stads.pdfsampling.blend import DEFAULT_TEMPORAL_WEIGHT
 from stads.stratified_sampler import StratifiedSampler
 from stads.video_downloader import DEFAULT_SAVE_DIR
 
-from stads.debug_images import PublicationOptions
+from stads.debug_images import (
+    ADAPTIVE_SAMPLER_REGISTRY, DebugImageSet, LOW_DWELL_REGISTRY,
+    PublicationOptions,
+)
 from stads.debug_images.reconstruction import ReconstructionDebugImage
 from stads.debug_images.samples import SamplesDebugImage
 from stads.debug_images.pdf import (
@@ -34,6 +37,7 @@ from stads.debug_images.error import ErrorMapDebugImage
 from stads.debug_images.psnr import PsnrMapDebugImage
 from stads.debug_images.ssim import SsimMapDebugImage
 from stads.debug_images.triangulation import TriangulationDebugImage
+from stads.debug_images.low_dwell import LowDwellReferenceDebugImage
 
 # display name -> (filename under DEFAULT_SAVE_DIR, total dwell time,
 # publication ROI). The ROI is (top, left, size) in frame pixels -- rows
@@ -117,7 +121,22 @@ ALL_DEBUG_IMAGE_KINDS = [
     PdfSpatialContributionDebugImage.kind, PdfTemporalContributionDebugImage.kind,
     FlowDebugImage.kind, TemporalVarianceDebugImage.kind, ErrorMapDebugImage.kind,
     PsnrMapDebugImage.kind, SsimMapDebugImage.kind, TriangulationDebugImage.kind,
+    LowDwellReferenceDebugImage.kind,
 ]
+
+
+def switches_for(registry, debug_images_dict):
+    """The part of `debug_images_dict` naming kinds `registry` owns.
+
+    DebugImageSet rejects a kind it does not know, which is what catches a
+    misspelt switch, so each consumer is handed only its own: the sampler's
+    registry has no low-dwell reference in it, and the reference's registry
+    has none of the sampler's kinds.
+    """
+    kinds = {cls.kind for cls in registry}
+    return {kind: enabled
+            for kind, enabled in (debug_images_dict or {}).items()
+            if kind in kinds}
 
 
 def debug_images_dict(enabled_kinds):
@@ -190,29 +209,29 @@ class RunConfig:
     publication_images: Optional[PublicationOptions] = None
 
 
-#: Root of the debug image tree, one directory per run, beside each script's
-#: own sweep-level CSV and JSON rather than inside it.
+#: Root of every generated artefact: one directory per run holding that
+#: run's image stacks, beside each script's own sweep-level CSV and JSON.
 #:
 #: Windows refuses to create a directory once its absolute path reaches 248
 #: characters, and reports paths past 260 as "path not found" rather than as
-#: too long. The debug images written inside a run's directory add another
-#: 30-60 on top of it, so debug_output_dir's components are held to the
-#: parameters the sweeps actually vary.
-DEBUG_OUTPUT_ROOT = "debug"
+#: too long. The images written inside a run's directory add another 30-60 on
+#: top of it, so run_output_dir's components are held to the parameters the
+#: sweeps actually vary.
+OUTPUT_ROOT = "output"
 
 
-def debug_output_dir(gt_name, scanned_pixel_percent, alpha,
-                     adaptive_fraction, temporal_residual_cutoff,
-                     temporal_residual_confidence_scale, sample_sequence,
-                     extra_path_parts=()):
-    """The directory one run writes its debug images to.
+def run_output_dir(gt_name, scanned_pixel_percent, alpha,
+                   adaptive_fraction, temporal_residual_cutoff,
+                   temporal_residual_confidence_scale, sample_sequence,
+                   extra_path_parts=()):
+    """The directory one run writes its image stacks to.
 
     Every parameter a caller sweeps has to appear here or in
     extra_path_parts; two runs differing only in a parameter the path omits
     land in the same directory and overwrite each other's figures.
     """
     return os.path.join(
-        DEBUG_OUTPUT_ROOT, gt_name,
+        OUTPUT_ROOT, gt_name,
         f"sparsity_{scanned_pixel_percent}",
         f"alpha_{alpha}",
         f"adaptive_{adaptive_fraction}",
@@ -220,6 +239,59 @@ def debug_output_dir(gt_name, scanned_pixel_percent, alpha,
         f"_confidence_scale_{temporal_residual_confidence_scale}",
         str(sample_sequence),
         *extra_path_parts)
+
+
+_noiseModel = None
+
+
+def noise_model():
+    """The SEM noise model, loaded once per process.
+
+    Lazily: every worker process imports this module, and only the runs
+    asked for the low-dwell reference need the calibration.
+    """
+    global _noiseModel
+    if _noiseModel is None:
+        from sem_noise_generator import SEMNoiseModel
+        model = SEMNoiseModel()
+        model.load_model("sem_noise_model.pkl")
+        _noiseModel = model
+    return _noiseModel
+
+
+def write_low_dwell_reference(config, gt_name, scanned_pixel_percent, sampler,
+                              frameCount, example_dir, publication_images):
+    """The dose-matched full-raster reference, into this run's own directory.
+
+    What the same electron budget would have produced scanning every pixel at
+    a proportionally shorter dwell time. It sits beside the reconstruction a
+    reader compares it against, so a run's directory holds every image its
+    figure needs.
+
+    Regenerated per run rather than once per (dataset, sparsity), which is
+    the price of that. The CSV numbers do come from one run per (dataset,
+    sparsity) -- see experiments_main's low-dwell task -- so the duplication
+    is in the images only.
+    """
+    overrides = switches_for(LOW_DWELL_REGISTRY, config.debug_images_dict)
+    if not any(overrides.values()):
+        return
+
+    t_high = GROUNDTRUTH_MAP[gt_name][1]
+    t_target = (scanned_pixel_percent / 100.0) * t_high
+    model = noise_model()
+    images = DebugImageSet(sampler, LOW_DWELL_REGISTRY, overrides=overrides,
+                           publication=publication_images)
+    try:
+        for frameNumber in range(frameCount):
+            reference = model.generate_low_dwell_time_image(
+                sampler.microscope.groundTruthVideo[frameNumber],
+                t_high=t_high, t_target=t_target)
+            images.low_dwell.process(frameNumber, example_dir, reference)
+    finally:
+        # Finalises the multi-page TIFF, so it has to run even on the error
+        # path or the stack is left unreadable.
+        images.close()
 
 
 def run_sampler(config: RunConfig, gt_name, scanned_pixel_percent, sampler_type,
@@ -302,7 +374,8 @@ def run_sampler(config: RunConfig, gt_name, scanned_pixel_percent, sampler_type,
                 pdfTemporalSigma=pdf_temporal_sigma,
                 temporalResidualCutoff=temporal_residual_cutoff,
                 temporalResidualConfidenceScale=temporal_residual_confidence_scale,
-                debugImages=config.debug_images_dict,
+                debugImages=switches_for(ADAPTIVE_SAMPLER_REGISTRY,
+                                         config.debug_images_dict),
                 publicationImages=publication_images,
                 **(extra_sampler_kwargs or {}),
             )
@@ -317,7 +390,7 @@ def run_sampler(config: RunConfig, gt_name, scanned_pixel_percent, sampler_type,
 
         trueNumberOfFrames = sampler.numberOfFrames
 
-        example_dir = debug_output_dir(
+        example_dir = run_output_dir(
             gt_name, scanned_pixel_percent, alpha,
             adaptive_fraction, temporal_residual_cutoff,
             temporal_residual_confidence_scale, sample_sequence,
@@ -341,6 +414,10 @@ def run_sampler(config: RunConfig, gt_name, scanned_pixel_percent, sampler_type,
         log(config.log_path,
             f"[TIMING] sampler.run(): {t_run_end - t_run_start:.2f}s | {sampler_type} | "
             f"{gt_name} | S={scanned_pixel_percent}% | alpha={alpha}")
+
+        write_low_dwell_reference(config, gt_name, scanned_pixel_percent,
+                                  sampler, trueNumberOfFrames, example_dir,
+                                  publication_images)
 
         for frame_idx in range(trueNumberOfFrames):
             local_results.append({

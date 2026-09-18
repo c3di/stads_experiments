@@ -73,8 +73,8 @@ script_log.txt
 src/
 
 # Generated output files
+output/
 plots*/
-debug/
 plots_after_report.zip
 movie_analysis/
 analysis/

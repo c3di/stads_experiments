@@ -134,8 +134,8 @@ def _filter_scanned_pixel_percent_range(
 
 
 def generate_framewise_line_plots(
-	csv_path: str | Path = "plots/per_frame_results.csv",
-	output_dir: str | Path = "plots/statistics",
+	csv_path: str | Path = "output/per_frame_results.csv",
+	output_dir: str | Path = "output/statistics",
 	selected_alpha: float = 2.0,
 	include_groups: list[str] | None = None,
 	scanned_pixel_percent_range: tuple[float, float] | list[float] | None = None,
@@ -216,8 +216,8 @@ def generate_framewise_line_plots(
 
 
 def generate_averaged_metric_vs_scanned_pixel_plots(
-	csv_path: str | Path = "plots/per_frame_results.csv",
-	output_dir: str | Path = "plots/statistics",
+	csv_path: str | Path = "output/per_frame_results.csv",
+	output_dir: str | Path = "output/statistics",
 	selected_alpha: float = 2.0,
 	include_groups: list[str] | None = None,
 	scanned_pixel_percent_range: tuple[float, float] | list[float] | None = None,
@@ -330,8 +330,8 @@ def generate_averaged_metric_vs_scanned_pixel_plots(
 
 
 def generate_alpha_comparison_framewise_plots(
-	csv_path: str | Path = "plots/per_frame_results.csv",
-	output_dir: str | Path = "plots/statistics",
+	csv_path: str | Path = "output/per_frame_results.csv",
+	output_dir: str | Path = "output/statistics",
 	scanned_pixel_percent_range: tuple[float, float] | list[float] | None = None,
 ) -> None:
 	csv_path = Path(csv_path)
