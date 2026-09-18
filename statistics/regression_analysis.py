@@ -38,8 +38,8 @@ from scipy import stats
 OUTPUT_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'regression_analysis.txt')
 
 # Parameters to include in analysis
-# Includes minDensityGamma which was previously excluded
-CONTINUOUS_PARAMS = ['alpha', 'adaptiveFraction', 'temporalResidualCutoff', 'temporalResidualConfidenceScale', 'minDensityGamma']
+# minDensityGamma is fixed in current experiments, so excluded
+CONTINUOUS_PARAMS = ['alpha', 'adaptiveFraction', 'temporalResidualCutoff', 'temporalResidualConfidenceScale']
 CATEGORICAL_PARAMS = ['sampleSequence']
 RESPONSE_PARAMS = ['psnr_mean', 'ssim_mean']
 
