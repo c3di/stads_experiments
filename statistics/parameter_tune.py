@@ -34,6 +34,7 @@ import matplotlib
 matplotlib.use('Agg')  # Non-interactive backend for saving plots
 import matplotlib.pyplot as plt
 import seaborn as sns
+from matplotlib.ticker import AutoMinorLocator
 
 
 def create_summary_plots():
@@ -83,19 +84,26 @@ def create_summary_plots():
         # Use seaborn scatterplot with hue for ground truth
         ax = sns.scatterplot(
             data=sparsity_df,
-            x='psnr_mean',
-            y='ssim_mean',
-            hue='source_gt',
-            palette='tab10',
-            alpha=0.7,
-            s=100
+            x="psnr_mean",
+            y="ssim_mean",
+            hue="source_gt",
+            palette="tab10",
+            marker="+",
+            linewidth=1.5,
         )
         
         plt.xlabel('PSNR (mean)', fontsize=12)
         plt.ylabel('SSIM (mean)', fontsize=12)
         plt.title(f'PSNR vs SSIM - scanned_pixel_percent = {sparsity}', fontsize=14)
         plt.legend(title='Ground Truth', fontsize=10, bbox_to_anchor=(1.05, 1), loc='upper left')
-        plt.grid(True, alpha=0.3)
+        
+        # Grid settings
+        ax.xaxis.set_minor_locator(AutoMinorLocator())
+        ax.yaxis.set_minor_locator(AutoMinorLocator())
+        
+        ax.grid(True, which="major", alpha=0.35)
+        ax.grid(True, which="minor", alpha=0.18, linewidth=0.5)
+        
         plt.tight_layout()
         
         # Save plot
