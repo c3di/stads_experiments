@@ -57,7 +57,7 @@ output_dir = "plots"
 os.makedirs(output_dir, exist_ok=True)
 LOGFILE = "script_log.txt"
 CSV_PATH = os.path.join(output_dir, "per_frame_results.csv")
-OVERWRITE_CSV = True #set to True if you want to overwrite the existing CSV file, False to append to it
+OVERWRITE_CSV = False #set to True if you want to overwrite the existing CSV file, False to append to it
 STANDARD_WORKER_POOL_SIZE = 6
 
 # JSON persistence configuration
@@ -65,7 +65,7 @@ STANDARD_WORKER_POOL_SIZE = 6
 #   ExperimentRunManager.NO_JSON - No JSON persistence (original behavior)
 #   ExperimentRunManager.USE_ONLY - Use only JSON file, skip assembly, run only unfinished
 #   ExperimentRunManager.USE_AND_UPDATE - Merge assembly with JSON, filter finished, add new configs
-JSON_MODE = ExperimentRunManager.USE_AND_UPDATE
+JSON_MODE = ExperimentRunManager.USE_ONLY
 JSON_PATH = os.path.join(output_dir, "experiments_state.json")
 
 # Global experiment run manager
