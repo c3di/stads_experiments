@@ -72,7 +72,9 @@ def resize_frame(frame: np.ndarray, target_H: int, target_W: int) -> np.ndarray:
     Returns:
         Resized frame array with same dtype and number of channels
     """
-    # Get current dimensions
+    # Get current dimensions and track if we need to restore single channel
+    is_single_channel_3d = frame.ndim == 3 and frame.shape[2] == 1
+    
     if frame.ndim == 2:
         # Grayscale
         img = Image.fromarray(frame, mode='L')
@@ -82,7 +84,7 @@ def resize_frame(frame: np.ndarray, target_H: int, target_W: int) -> np.ndarray:
         elif frame.shape[2] == 4:
             img = Image.fromarray(frame, mode='RGBA')
         else:
-            # Single channel but 3D
+            # Single channel but 3D - take first channel
             img = Image.fromarray(frame[..., 0], mode='L')
     else:
         raise ValueError(f"Unexpected frame shape: {frame.shape}")
@@ -94,7 +96,7 @@ def resize_frame(frame: np.ndarray, target_H: int, target_W: int) -> np.ndarray:
     result = np.array(img, dtype=frame.dtype)
     
     # If input was 3D with single channel, restore that structure
-    if frame.ndim == 3 and frame.shape[2] == 1:
+    if is_single_channel_3d:
         result = result[..., np.newaxis]
     
     return result
@@ -105,11 +107,12 @@ def build_experiment_path(config: Dict, base_dir: str = "plots") -> str:
     Build the filesystem path for an experiment's result directory.
     
     The path structure is:
-    {base_dir}/examples/{sampler_type}/interpol_{interpol_method}/sparsity_{scanned_pixel_percent}/
-    {gt_name}/sampler_{has_temporal_sampler}_reconstruction_{has_temporal_reconstruction}/
+    {base_dir}/examples/{sampler_type}/interpol_{interpol_method}/
+    sparsity_{scanned_pixel_percent}/{gt_name}/
+    sampler_{has_temporal_sampler}_reconstruction_{has_temporal_reconstruction}/
     temporalMethod_{temporal_method}/temporalResidualCutoff_{temporal_residual_cutoff}/
-    temporalResidualConfidenceScale_{temporal_residual_confidence_scale}/sampleSequence_{sample_sequence}/
-    alpha_{alpha}/adaptive_{adaptive_fraction}/
+    temporalResidualConfidenceScale_{temporal_residual_confidence_scale}/
+    sampleSequence_{sample_sequence}/alpha_{alpha}/adaptive_{adaptive_fraction}/
     
     Args:
         config: Dict with experiment configuration parameters
@@ -130,7 +133,8 @@ def build_experiment_path(config: Dict, base_dir: str = "plots") -> str:
         f"interpol_{config['interpol_method']}",
         f"sparsity_{config['scanned_pixel_percent']}",
         config["gt_name"],
-        f"sampler_{config['has_temporal_sampler']}_reconstruction_{config['has_temporal_reconstruction']}",
+        f"sampler_{config['has_temporal_sampler']}_"
+        f"reconstruction_{config['has_temporal_reconstruction']}",
         f"temporalMethod_{config['temporal_method']}",
         f"temporalResidualCutoff_{config['temporal_residual_cutoff']}",
         f"temporalResidualConfidenceScale_{config['temporal_residual_confidence_scale']}",
@@ -142,7 +146,9 @@ def build_experiment_path(config: Dict, base_dir: str = "plots") -> str:
     return os.path.join(*path_parts)
 
 
-def load_all_frames_from_experiment(config: Dict, result_type: str, base_dir: str = "plots") -> np.ndarray:
+def load_all_frames_from_experiment(
+        config: Dict, result_type: str, base_dir: str = "plots"
+) -> np.ndarray:
     """
     Load all frames from an experiment's multi-frame TIFF result.
     
@@ -196,7 +202,8 @@ def load_all_frames_from_experiment(config: Dict, result_type: str, base_dir: st
             pass  # Already (T, H, W)
         else:
             # This is (H, W, C) - single frame with channels
-            print(f"    Assuming shape is (H, W, C) with H={frames.shape[0]}, converting to (1, H, W)")
+            print(f"    Assuming shape is (H, W, C) with H={frames.shape[0]}")
+            print("    converting to (1, H, W)")
             frames = frames[np.newaxis, ...]
     elif frames.ndim == 4:
         # (T, H, W, C) - convert to (T, H, W) by taking first channel
@@ -322,7 +329,9 @@ def load_all_ground_truth_frames(gt_name: str) -> np.ndarray:
     return frames
 
 
-def add_colored_border(image: np.ndarray, color: Tuple[int, int, int], width: int = 3) -> np.ndarray:
+def add_colored_border(
+        image: np.ndarray, color: Tuple[int, int, int], width: int = 3
+) -> np.ndarray:
     """
     Add a colored border to an image.
     
@@ -446,7 +455,6 @@ def create_composite_page(exp_frames_2d: List[np.ndarray],
         bordered = add_colored_border(gt_frame_rgb, color, width=3)
         
         # Calculate position (border adds to dimensions)
-        border_width = 3
         bordered_H, bordered_W = bordered.shape[:2]
         
         y_start = row * H
@@ -569,7 +577,8 @@ def compare_experiments(
         exp_frame_arrays.append(frames)
         
         # Debug output
-        print(f"  Loaded {frames.shape[0]} frames from {result_type}.tiff (H={frames.shape[1]}, W={frames.shape[2]})")
+        print(f"  Loaded {frames.shape[0]} frames from {result_type}.tiff")
+        print(f"    (H={frames.shape[1]}, W={frames.shape[2]})")
         
         # Check dimensions match reference
         if ref_H is None:

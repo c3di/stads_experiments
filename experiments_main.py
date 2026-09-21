@@ -182,7 +182,7 @@ def build_experiment_list():
     experiments.extend(create_experiments_from_parameter_lists(
         gt_names=GROUNDTRUTH_NAMES,
         scanned_pixel_percentages=SCANNED_PIXELS_PERCENTAGES,
-        sampler_types=["adaptive"],
+        sampler_types=["adaptive", "stratified"],
         interpol_methods=INTERPOLATION_METHODS,
         has_temporal_samplers=TEMPORAL_SAMPLING_OPTIONS,
         has_temporal_reconstructions=TEMPORAL_RECONSTRUCTION_OPTIONS,

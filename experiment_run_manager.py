@@ -492,36 +492,66 @@ def create_experiments_from_parameter_lists(
     """Factory method to create multiple ExperimentRun objects from parameter lists.
     
     This replaces the nested for-loop approach with a cleaner functional approach.
+    For stratified sampler, adaptive-only parameters are filtered out to avoid duplicates.
     """
     experiments = []
     
-    for gt_name in gt_names:
-        for interpol_method in interpol_methods:
-            for use_temporal_sampler in has_temporal_samplers:
-                for use_temporal_reconstruction in has_temporal_reconstructions:
-                    # temporalMethod only affects behaviour when use_temporal_sampler is True
-                    methods = temporal_methods if use_temporal_sampler else temporal_methods[:1]
-                    for temporal_method in methods:
-                        # temporalResidualCutoff/ConfidenceScale only affect temporal_variance
-                        cutoffs = temporal_residual_cutoffs if temporal_method == "temporal_variance" else temporal_residual_cutoffs[:1]
-                        scales = temporal_residual_confidence_scales if temporal_method == "temporal_variance" else temporal_residual_confidence_scales[:1]
-                        
-                        for temporal_residual_cutoff in cutoffs:
-                            for temporal_residual_confidence_scale in scales:
-                                for scanned_pixel_percent in scanned_pixel_percentages:
-                                    for adaptive_fraction in adaptive_fractions:
-                                        for min_density_gamma in min_density_gammas:
-                                            for sample_sequence in sample_sequences:
-                                                if use_temporal_reconstruction:
-                                                    for alpha in alphas:
+    for sampler_type in sampler_types:
+        # For stratified sampler, filter out parameters that don't apply
+        is_stratified = sampler_type == "stratified"
+        
+        # Adaptive-only parameters - use single value (None/0.0) for stratified
+        sampler_alphas = [None] if is_stratified else alphas
+        sampler_adaptive_fractions = [0.0] if is_stratified else adaptive_fractions
+        sampler_min_density_gammas = [0.0] if is_stratified else min_density_gammas
+        sampler_has_temporal_samplers = [False] if is_stratified else has_temporal_samplers
+        sampler_has_temporal_reconstructions = [False] if is_stratified else has_temporal_reconstructions
+        sampler_temporal_methods = ["optical_flow"] if is_stratified else temporal_methods
+        sampler_sample_sequences = ["stratified"] if is_stratified else sample_sequences
+        
+        for gt_name in gt_names:
+            for interpol_method in interpol_methods:
+                for use_temporal_sampler in sampler_has_temporal_samplers:
+                    for use_temporal_reconstruction in sampler_has_temporal_reconstructions:
+                        # temporalMethod only affects behaviour when use_temporal_sampler is True
+                        methods = sampler_temporal_methods if use_temporal_sampler else sampler_temporal_methods[:1]
+                        for temporal_method in methods:
+                            # temporalResidualCutoff/ConfidenceScale only affect temporal_variance
+                            cutoffs = temporal_residual_cutoffs if temporal_method == "temporal_variance" else temporal_residual_cutoffs[:1]
+                            scales = temporal_residual_confidence_scales if temporal_method == "temporal_variance" else temporal_residual_confidence_scales[:1]
+                            
+                            for temporal_residual_cutoff in cutoffs:
+                                for temporal_residual_confidence_scale in scales:
+                                    for scanned_pixel_percent in scanned_pixel_percentages:
+                                        for adaptive_fraction in sampler_adaptive_fractions:
+                                            for min_density_gamma in sampler_min_density_gammas:
+                                                for sample_sequence in sampler_sample_sequences:
+                                                    if use_temporal_reconstruction:
+                                                        for alpha in sampler_alphas:
+                                                            experiments.append(create_experiment_from_parameters(
+                                                                gt_name=gt_name,
+                                                                scanned_pixel_percent=scanned_pixel_percent,
+                                                                sampler_type=sampler_type,
+                                                                interpol_method=interpol_method,
+                                                                has_temporal_sampler=use_temporal_sampler,
+                                                                has_temporal_reconstruction=use_temporal_reconstruction,
+                                                                alpha=alpha,
+                                                                adaptive_fraction=adaptive_fraction,
+                                                                min_density_gamma=min_density_gamma,
+                                                                temporal_method=temporal_method,
+                                                                temporal_residual_cutoff=temporal_residual_cutoff,
+                                                                temporal_residual_confidence_scale=temporal_residual_confidence_scale,
+                                                                sample_sequence=sample_sequence,
+                                                            ))
+                                                    else:
                                                         experiments.append(create_experiment_from_parameters(
                                                             gt_name=gt_name,
                                                             scanned_pixel_percent=scanned_pixel_percent,
-                                                            sampler_type="adaptive",
+                                                            sampler_type=sampler_type,
                                                             interpol_method=interpol_method,
                                                             has_temporal_sampler=use_temporal_sampler,
                                                             has_temporal_reconstruction=use_temporal_reconstruction,
-                                                            alpha=alpha,
+                                                            alpha=None if is_stratified else 1.0,
                                                             adaptive_fraction=adaptive_fraction,
                                                             min_density_gamma=min_density_gamma,
                                                             temporal_method=temporal_method,
@@ -529,22 +559,6 @@ def create_experiments_from_parameter_lists(
                                                             temporal_residual_confidence_scale=temporal_residual_confidence_scale,
                                                             sample_sequence=sample_sequence,
                                                         ))
-                                                else:
-                                                    experiments.append(create_experiment_from_parameters(
-                                                        gt_name=gt_name,
-                                                        scanned_pixel_percent=scanned_pixel_percent,
-                                                        sampler_type="adaptive",
-                                                        interpol_method=interpol_method,
-                                                        has_temporal_sampler=use_temporal_sampler,
-                                                        has_temporal_reconstruction=use_temporal_reconstruction,
-                                                        alpha=1.0,  # alpha irrelevant when temporal reconstruction disabled
-                                                        adaptive_fraction=adaptive_fraction,
-                                                        min_density_gamma=min_density_gamma,
-                                                        temporal_method=temporal_method,
-                                                        temporal_residual_cutoff=temporal_residual_cutoff,
-                                                        temporal_residual_confidence_scale=temporal_residual_confidence_scale,
-                                                        sample_sequence=sample_sequence,
-                                                    ))
     
     return experiments
 
