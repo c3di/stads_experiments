@@ -90,7 +90,7 @@ statistics/result_comparison_*.tiff
 statistics/best_config_comparisons/
 best_config_comparisons/
 statistics/frame_strips/
-
+statistics/video_dynamics/
 
 # Video dynamics analysis outputs
 statistics/video_dynamics_results.csv
