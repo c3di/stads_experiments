@@ -1,0 +1,15 @@
+1. mit parameter_tune.py die nach GT aufgeschlüsselten Aggregate erstellen (PSNR mean etc.) basiert auf auf den per_frame_results.csv
+    -> jede Zeile ein mean Wert für einen run mit entsprechender GT
+    Resultat:   [gt_name]_parameter_analysis.csv files
+                psnr_vs_ssim plot per sparsity
+                Console printout für beste und schlechteste config gemessen an PSNR, SSIM und combined rank (Ränge in PSNR/SSIM quadriert, dann addiert)
+2. mit regression_analysis.py die Regressionsmodelle erstellen, dafür müssen die _parameter_analysis.csv existieren.
+    Resultat: regression_analysis.txt mit den entsprechenden Modellen
+
+Weitere Visualisierungen:
+parameter_vs_response_plot.py
+    Pro GT x Sparsity bucket plots von einem Parameter vs. PSNR, SSIM, Combined score (also 3 Plots jeweils)
+experiment_comparison.py (compare_xyz.py):
+    Reconstruction frames als grid Darstellung für eine gegebene Anzahl an adaptive Konfigurationen plus optional low-dwell und original GTs
+result_graphic_comparison.py:
+    ähnlich zu experiment_comparison, eine adaptive Konfiguration im 1x4 grid neben stratified, low-dwell GT und original GT

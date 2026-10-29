@@ -1,0 +1,363 @@
+============================================================
+BEST CONFIGURATIONS BY ground_truth AND scanned_pixel_percent
+============================================================
+
+--- HYDRATION_ONE ---
+
+  --- scanned_pixel_percent = 0.1 ---
+    Best PSNR (mean=18.3738):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=HYDRATION_ONE, scanned_pixel_percent=0.1, alpha=3.0, beta=3.0, adaptiveFraction=0.5, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=25.0, temporalResidualConfidenceScale=100.0
+    Best SSIM (mean=0.2369):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=HYDRATION_ONE, scanned_pixel_percent=0.1, alpha=0.25, beta=0.25, adaptiveFraction=0.5, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=25.0, temporalResidualConfidenceScale=100.0
+    Best Combined (PSNR rank=11, SSIM rank=24, score=697):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=HYDRATION_ONE, scanned_pixel_percent=0.1, alpha=3.0, beta=3.0, adaptiveFraction=0.5, minDensityGamma=0.1, sampleSequence=stratified, temporalMethod=temporal_variance, temporalResidualCutoff=12.0, temporalResidualConfidenceScale=250.0
+    Worst PSNR (mean=16.5158):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=HYDRATION_ONE, scanned_pixel_percent=0.1, alpha=0.25, beta=0.25, adaptiveFraction=0.0, minDensityGamma=0.1, sampleSequence=stratified, temporalMethod=temporal_variance, temporalResidualCutoff=25.0, temporalResidualConfidenceScale=250.0
+    Worst SSIM (mean=0.1500):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=HYDRATION_ONE, scanned_pixel_percent=0.1, alpha=10.0, beta=10.0, adaptiveFraction=0.0, minDensityGamma=0.1, sampleSequence=stratified, temporalMethod=temporal_variance, temporalResidualCutoff=25.0, temporalResidualConfidenceScale=250.0
+    Worst Combined (PSNR rank=206, SSIM rank=238, score=99080):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=HYDRATION_ONE, scanned_pixel_percent=0.1, alpha=10.0, beta=10.0, adaptiveFraction=0.0, minDensityGamma=0.1, sampleSequence=stratified, temporalMethod=temporal_variance, temporalResidualCutoff=12.0, temporalResidualConfidenceScale=250.0
+
+  --- scanned_pixel_percent = 0.5 ---
+    Best PSNR (mean=20.2621):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=HYDRATION_ONE, scanned_pixel_percent=0.5, alpha=3.0, beta=3.0, adaptiveFraction=0.5, minDensityGamma=0.1, sampleSequence=stratified, temporalMethod=temporal_variance, temporalResidualCutoff=25.0, temporalResidualConfidenceScale=100.0
+    Best SSIM (mean=0.2920):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=HYDRATION_ONE, scanned_pixel_percent=0.5, alpha=1.0, beta=1.0, adaptiveFraction=0.5, minDensityGamma=0.1, sampleSequence=stratified, temporalMethod=temporal_variance, temporalResidualCutoff=12.0, temporalResidualConfidenceScale=100.0
+    Best Combined (PSNR rank=12, SSIM rank=29, score=985):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=HYDRATION_ONE, scanned_pixel_percent=0.5, alpha=3.0, beta=3.0, adaptiveFraction=0.5, minDensityGamma=0.1, sampleSequence=uniform, temporalMethod=temporal_variance, temporalResidualCutoff=12.0, temporalResidualConfidenceScale=250.0
+    Worst PSNR (mean=17.5656):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=HYDRATION_ONE, scanned_pixel_percent=0.5, alpha=0.25, beta=0.25, adaptiveFraction=0.5, minDensityGamma=0.1, sampleSequence=stratified, temporalMethod=temporal_variance, temporalResidualCutoff=12.0, temporalResidualConfidenceScale=100.0
+    Worst SSIM (mean=0.2227):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=HYDRATION_ONE, scanned_pixel_percent=0.5, alpha=10.0, beta=10.0, adaptiveFraction=0.0, minDensityGamma=0.1, sampleSequence=uniform, temporalMethod=temporal_variance, temporalResidualCutoff=25.0, temporalResidualConfidenceScale=100.0
+    Worst Combined (PSNR rank=223, SSIM rank=234, score=104485):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=HYDRATION_ONE, scanned_pixel_percent=0.5, alpha=0.25, beta=0.25, adaptiveFraction=0.3, minDensityGamma=0.1, sampleSequence=uniform, temporalMethod=temporal_variance, temporalResidualCutoff=12.0, temporalResidualConfidenceScale=100.0
+
+  --- scanned_pixel_percent = 1.0 ---
+    Best PSNR (mean=21.0420):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=HYDRATION_ONE, scanned_pixel_percent=1.0, alpha=3.0, beta=3.0, adaptiveFraction=0.3, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=12.0, temporalResidualConfidenceScale=250.0
+    Best SSIM (mean=0.3193):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=HYDRATION_ONE, scanned_pixel_percent=1.0, alpha=1.0, beta=1.0, adaptiveFraction=0.5, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=12.0, temporalResidualConfidenceScale=250.0
+    Best Combined (PSNR rank=6, SSIM rank=14, score=232):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=HYDRATION_ONE, scanned_pixel_percent=1.0, alpha=3.0, beta=3.0, adaptiveFraction=0.5, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=12.0, temporalResidualConfidenceScale=100.0
+    Worst PSNR (mean=18.1468):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=HYDRATION_ONE, scanned_pixel_percent=1.0, alpha=0.25, beta=0.25, adaptiveFraction=0.5, minDensityGamma=0.1, sampleSequence=stratified, temporalMethod=temporal_variance, temporalResidualCutoff=25.0, temporalResidualConfidenceScale=250.0
+    Worst SSIM (mean=0.2536):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=HYDRATION_ONE, scanned_pixel_percent=1.0, alpha=0.25, beta=0.25, adaptiveFraction=0.5, minDensityGamma=0.1, sampleSequence=stratified, temporalMethod=temporal_variance, temporalResidualCutoff=12.0, temporalResidualConfidenceScale=100.0
+    Worst Combined (PSNR rank=238, SSIM rank=239, score=113765):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=HYDRATION_ONE, scanned_pixel_percent=1.0, alpha=0.25, beta=0.25, adaptiveFraction=0.5, minDensityGamma=0.1, sampleSequence=uniform, temporalMethod=temporal_variance, temporalResidualCutoff=12.0, temporalResidualConfidenceScale=250.0
+
+  --- scanned_pixel_percent = 2.0 ---
+    Best PSNR (mean=21.7993):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=HYDRATION_ONE, scanned_pixel_percent=2.0, alpha=5.0, beta=5.0, adaptiveFraction=0.3, minDensityGamma=0.1, sampleSequence=stratified, temporalMethod=temporal_variance, temporalResidualCutoff=12.0, temporalResidualConfidenceScale=250.0
+    Best SSIM (mean=0.3512):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=HYDRATION_ONE, scanned_pixel_percent=2.0, alpha=3.0, beta=3.0, adaptiveFraction=0.5, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=12.0, temporalResidualConfidenceScale=100.0
+    Best Combined (PSNR rank=8, SSIM rank=6, score=100):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=HYDRATION_ONE, scanned_pixel_percent=2.0, alpha=3.0, beta=3.0, adaptiveFraction=0.3, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=12.0, temporalResidualConfidenceScale=250.0
+    Worst PSNR (mean=18.9262):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=HYDRATION_ONE, scanned_pixel_percent=2.0, alpha=0.25, beta=0.25, adaptiveFraction=0.5, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=12.0, temporalResidualConfidenceScale=100.0
+    Worst SSIM (mean=0.2791):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=HYDRATION_ONE, scanned_pixel_percent=2.0, alpha=0.25, beta=0.25, adaptiveFraction=0.5, minDensityGamma=0.1, sampleSequence=stratified, temporalMethod=temporal_variance, temporalResidualCutoff=12.0, temporalResidualConfidenceScale=100.0
+    Worst Combined (PSNR rank=238, SSIM rank=240, score=114244):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=HYDRATION_ONE, scanned_pixel_percent=2.0, alpha=0.25, beta=0.25, adaptiveFraction=0.5, minDensityGamma=0.1, sampleSequence=stratified, temporalMethod=temporal_variance, temporalResidualCutoff=12.0, temporalResidualConfidenceScale=100.0
+
+  --- scanned_pixel_percent = 5.0 ---
+    Best PSNR (mean=22.8651):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=HYDRATION_ONE, scanned_pixel_percent=5.0, alpha=10.0, beta=10.0, adaptiveFraction=0.5, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=12.0, temporalResidualConfidenceScale=100.0
+    Best SSIM (mean=0.4195):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=HYDRATION_ONE, scanned_pixel_percent=5.0, alpha=3.0, beta=3.0, adaptiveFraction=0.0, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=12.0, temporalResidualConfidenceScale=100.0
+    Best Combined (PSNR rank=36, SSIM rank=13, score=1465):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=HYDRATION_ONE, scanned_pixel_percent=5.0, alpha=3.0, beta=3.0, adaptiveFraction=0.3, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=12.0, temporalResidualConfidenceScale=250.0
+    Worst PSNR (mean=19.8512):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=HYDRATION_ONE, scanned_pixel_percent=5.0, alpha=0.25, beta=0.25, adaptiveFraction=0.5, minDensityGamma=0.1, sampleSequence=uniform, temporalMethod=temporal_variance, temporalResidualCutoff=12.0, temporalResidualConfidenceScale=100.0
+    Worst SSIM (mean=0.3209):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=HYDRATION_ONE, scanned_pixel_percent=5.0, alpha=0.25, beta=0.25, adaptiveFraction=0.1, minDensityGamma=0.1, sampleSequence=uniform, temporalMethod=temporal_variance, temporalResidualCutoff=12.0, temporalResidualConfidenceScale=100.0
+    Worst Combined (PSNR rank=239, SSIM rank=235, score=112346):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=HYDRATION_ONE, scanned_pixel_percent=5.0, alpha=0.25, beta=0.25, adaptiveFraction=0.5, minDensityGamma=0.1, sampleSequence=uniform, temporalMethod=temporal_variance, temporalResidualCutoff=12.0, temporalResidualConfidenceScale=250.0
+
+--- LI_EXPULSION_ONE_10FPS ---
+
+  --- scanned_pixel_percent = 0.1 ---
+    Best PSNR (mean=33.8237):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_ONE_10FPS, scanned_pixel_percent=0.1, alpha=0.25, beta=0.25, adaptiveFraction=0.1, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=3.0, temporalResidualConfidenceScale=50.0
+    Best SSIM (mean=0.9343):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_ONE_10FPS, scanned_pixel_percent=0.1, alpha=0.25, beta=0.25, adaptiveFraction=0.1, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=3.0, temporalResidualConfidenceScale=50.0
+    Best Combined (PSNR rank=1, SSIM rank=1, score=2):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_ONE_10FPS, scanned_pixel_percent=0.1, alpha=0.25, beta=0.25, adaptiveFraction=0.1, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=3.0, temporalResidualConfidenceScale=50.0
+    Worst PSNR (mean=20.4144):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_ONE_10FPS, scanned_pixel_percent=0.1, alpha=5.0, beta=5.0, adaptiveFraction=0.0, minDensityGamma=0.1, sampleSequence=stratified, temporalMethod=temporal_variance, temporalResidualCutoff=12.0, temporalResidualConfidenceScale=250.0
+    Worst SSIM (mean=0.8159):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_ONE_10FPS, scanned_pixel_percent=0.1, alpha=10.0, beta=10.0, adaptiveFraction=0.0, minDensityGamma=0.1, sampleSequence=stratified, temporalMethod=temporal_variance, temporalResidualCutoff=12.0, temporalResidualConfidenceScale=100.0
+    Worst Combined (PSNR rank=419, SSIM rank=420, score=351961):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_ONE_10FPS, scanned_pixel_percent=0.1, alpha=10.0, beta=10.0, adaptiveFraction=0.0, minDensityGamma=0.1, sampleSequence=stratified, temporalMethod=temporal_variance, temporalResidualCutoff=12.0, temporalResidualConfidenceScale=100.0
+
+  --- scanned_pixel_percent = 0.5 ---
+    Best PSNR (mean=38.1292):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_ONE_10FPS, scanned_pixel_percent=0.5, alpha=0.25, beta=0.25, adaptiveFraction=0.1, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=3.0, temporalResidualConfidenceScale=250.0
+    Best SSIM (mean=0.9621):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_ONE_10FPS, scanned_pixel_percent=0.5, alpha=0.25, beta=0.25, adaptiveFraction=0.1, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=3.0, temporalResidualConfidenceScale=250.0
+    Best Combined (PSNR rank=1, SSIM rank=1, score=2):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_ONE_10FPS, scanned_pixel_percent=0.5, alpha=0.25, beta=0.25, adaptiveFraction=0.1, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=3.0, temporalResidualConfidenceScale=250.0
+    Worst PSNR (mean=30.0738):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_ONE_10FPS, scanned_pixel_percent=0.5, alpha=10.0, beta=10.0, adaptiveFraction=0.0, minDensityGamma=0.1, sampleSequence=uniform, temporalMethod=temporal_variance, temporalResidualCutoff=25.0, temporalResidualConfidenceScale=100.0
+    Worst SSIM (mean=0.8834):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_ONE_10FPS, scanned_pixel_percent=0.5, alpha=10.0, beta=10.0, adaptiveFraction=0.0, minDensityGamma=0.1, sampleSequence=uniform, temporalMethod=temporal_variance, temporalResidualCutoff=25.0, temporalResidualConfidenceScale=100.0
+    Worst Combined (PSNR rank=420, SSIM rank=420, score=352800):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_ONE_10FPS, scanned_pixel_percent=0.5, alpha=10.0, beta=10.0, adaptiveFraction=0.0, minDensityGamma=0.1, sampleSequence=uniform, temporalMethod=temporal_variance, temporalResidualCutoff=25.0, temporalResidualConfidenceScale=100.0
+
+  --- scanned_pixel_percent = 1.0 ---
+    Best PSNR (mean=40.2383):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_ONE_10FPS, scanned_pixel_percent=1.0, alpha=0.25, beta=0.25, adaptiveFraction=0.1, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=3.0, temporalResidualConfidenceScale=25.0
+    Best SSIM (mean=0.9705):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_ONE_10FPS, scanned_pixel_percent=1.0, alpha=0.25, beta=0.25, adaptiveFraction=0.1, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=3.0, temporalResidualConfidenceScale=100.0
+    Best Combined (PSNR rank=1, SSIM rank=3, score=10):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_ONE_10FPS, scanned_pixel_percent=1.0, alpha=0.25, beta=0.25, adaptiveFraction=0.1, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=3.0, temporalResidualConfidenceScale=25.0
+    Worst PSNR (mean=32.4521):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_ONE_10FPS, scanned_pixel_percent=1.0, alpha=10.0, beta=10.0, adaptiveFraction=0.0, minDensityGamma=0.1, sampleSequence=uniform, temporalMethod=temporal_variance, temporalResidualCutoff=25.0, temporalResidualConfidenceScale=100.0
+    Worst SSIM (mean=0.9056):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_ONE_10FPS, scanned_pixel_percent=1.0, alpha=10.0, beta=10.0, adaptiveFraction=0.0, minDensityGamma=0.1, sampleSequence=uniform, temporalMethod=temporal_variance, temporalResidualCutoff=25.0, temporalResidualConfidenceScale=100.0
+    Worst Combined (PSNR rank=420, SSIM rank=420, score=352800):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_ONE_10FPS, scanned_pixel_percent=1.0, alpha=10.0, beta=10.0, adaptiveFraction=0.0, minDensityGamma=0.1, sampleSequence=uniform, temporalMethod=temporal_variance, temporalResidualCutoff=25.0, temporalResidualConfidenceScale=100.0
+
+  --- scanned_pixel_percent = 2.0 ---
+    Best PSNR (mean=42.3993):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_ONE_10FPS, scanned_pixel_percent=2.0, alpha=0.25, beta=0.25, adaptiveFraction=0.1, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=3.0, temporalResidualConfidenceScale=100.0
+    Best SSIM (mean=0.9768):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_ONE_10FPS, scanned_pixel_percent=2.0, alpha=0.25, beta=0.25, adaptiveFraction=0.1, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=3.0, temporalResidualConfidenceScale=50.0
+    Best Combined (PSNR rank=2, SSIM rank=1, score=5):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_ONE_10FPS, scanned_pixel_percent=2.0, alpha=0.25, beta=0.25, adaptiveFraction=0.1, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=3.0, temporalResidualConfidenceScale=50.0
+    Worst PSNR (mean=35.1349):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_ONE_10FPS, scanned_pixel_percent=2.0, alpha=10.0, beta=10.0, adaptiveFraction=0.0, minDensityGamma=0.1, sampleSequence=uniform, temporalMethod=temporal_variance, temporalResidualCutoff=25.0, temporalResidualConfidenceScale=100.0
+    Worst SSIM (mean=0.9275):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_ONE_10FPS, scanned_pixel_percent=2.0, alpha=10.0, beta=10.0, adaptiveFraction=0.0, minDensityGamma=0.1, sampleSequence=uniform, temporalMethod=temporal_variance, temporalResidualCutoff=25.0, temporalResidualConfidenceScale=100.0
+    Worst Combined (PSNR rank=420, SSIM rank=420, score=352800):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_ONE_10FPS, scanned_pixel_percent=2.0, alpha=10.0, beta=10.0, adaptiveFraction=0.0, minDensityGamma=0.1, sampleSequence=uniform, temporalMethod=temporal_variance, temporalResidualCutoff=25.0, temporalResidualConfidenceScale=100.0
+
+  --- scanned_pixel_percent = 5.0 ---
+    Best PSNR (mean=45.1240):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_ONE_10FPS, scanned_pixel_percent=5.0, alpha=0.25, beta=0.25, adaptiveFraction=0.1, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=3.0, temporalResidualConfidenceScale=50.0
+    Best SSIM (mean=0.9829):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_ONE_10FPS, scanned_pixel_percent=5.0, alpha=0.25, beta=0.25, adaptiveFraction=0.1, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=3.0, temporalResidualConfidenceScale=50.0
+    Best Combined (PSNR rank=1, SSIM rank=1, score=2):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_ONE_10FPS, scanned_pixel_percent=5.0, alpha=0.25, beta=0.25, adaptiveFraction=0.1, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=3.0, temporalResidualConfidenceScale=50.0
+    Worst PSNR (mean=39.0899):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_ONE_10FPS, scanned_pixel_percent=5.0, alpha=10.0, beta=10.0, adaptiveFraction=0.0, minDensityGamma=0.1, sampleSequence=uniform, temporalMethod=temporal_variance, temporalResidualCutoff=25.0, temporalResidualConfidenceScale=100.0
+    Worst SSIM (mean=0.9542):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_ONE_10FPS, scanned_pixel_percent=5.0, alpha=10.0, beta=10.0, adaptiveFraction=0.0, minDensityGamma=0.1, sampleSequence=uniform, temporalMethod=temporal_variance, temporalResidualCutoff=25.0, temporalResidualConfidenceScale=100.0
+    Worst Combined (PSNR rank=420, SSIM rank=420, score=352800):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_ONE_10FPS, scanned_pixel_percent=5.0, alpha=10.0, beta=10.0, adaptiveFraction=0.0, minDensityGamma=0.1, sampleSequence=uniform, temporalMethod=temporal_variance, temporalResidualCutoff=25.0, temporalResidualConfidenceScale=100.0
+
+--- LI_EXPULSION_ONE_ORIGINAL ---
+
+  --- scanned_pixel_percent = 0.1 ---
+    Best PSNR (mean=31.8889):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_ONE_ORIGINAL, scanned_pixel_percent=0.1, alpha=5.0, beta=5.0, adaptiveFraction=0.5, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=6.0, temporalResidualConfidenceScale=50.0
+    Best SSIM (mean=0.8916):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_ONE_ORIGINAL, scanned_pixel_percent=0.1, alpha=3.0, beta=3.0, adaptiveFraction=0.1, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=3.0, temporalResidualConfidenceScale=100.0
+    Best Combined (PSNR rank=13, SSIM rank=7, score=218):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_ONE_ORIGINAL, scanned_pixel_percent=0.1, alpha=3.0, beta=3.0, adaptiveFraction=0.5, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=6.0, temporalResidualConfidenceScale=100.0
+    Worst PSNR (mean=28.4628):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_ONE_ORIGINAL, scanned_pixel_percent=0.1, alpha=0.25, beta=0.25, adaptiveFraction=0.0, minDensityGamma=0.1, sampleSequence=stratified, temporalMethod=temporal_variance, temporalResidualCutoff=12.0, temporalResidualConfidenceScale=100.0
+    Worst SSIM (mean=0.8760):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_ONE_ORIGINAL, scanned_pixel_percent=0.1, alpha=0.25, beta=0.25, adaptiveFraction=0.0, minDensityGamma=0.1, sampleSequence=stratified, temporalMethod=temporal_variance, temporalResidualCutoff=12.0, temporalResidualConfidenceScale=100.0
+    Worst Combined (PSNR rank=420, SSIM rank=420, score=352800):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_ONE_ORIGINAL, scanned_pixel_percent=0.1, alpha=0.25, beta=0.25, adaptiveFraction=0.0, minDensityGamma=0.1, sampleSequence=stratified, temporalMethod=temporal_variance, temporalResidualCutoff=12.0, temporalResidualConfidenceScale=100.0
+
+  --- scanned_pixel_percent = 0.5 ---
+    Best PSNR (mean=36.2351):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_ONE_ORIGINAL, scanned_pixel_percent=0.5, alpha=5.0, beta=5.0, adaptiveFraction=0.3, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=3.0, temporalResidualConfidenceScale=25.0
+    Best SSIM (mean=0.9094):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_ONE_ORIGINAL, scanned_pixel_percent=0.5, alpha=5.0, beta=5.0, adaptiveFraction=0.3, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=3.0, temporalResidualConfidenceScale=25.0
+    Best Combined (PSNR rank=1, SSIM rank=1, score=2):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_ONE_ORIGINAL, scanned_pixel_percent=0.5, alpha=5.0, beta=5.0, adaptiveFraction=0.3, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=3.0, temporalResidualConfidenceScale=25.0
+    Worst PSNR (mean=31.7060):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_ONE_ORIGINAL, scanned_pixel_percent=0.5, alpha=0.25, beta=0.25, adaptiveFraction=0.0, minDensityGamma=0.1, sampleSequence=uniform, temporalMethod=temporal_variance, temporalResidualCutoff=12.0, temporalResidualConfidenceScale=100.0
+    Worst SSIM (mean=0.8684):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_ONE_ORIGINAL, scanned_pixel_percent=0.5, alpha=0.25, beta=0.25, adaptiveFraction=0.1, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=3.0, temporalResidualConfidenceScale=250.0
+    Worst Combined (PSNR rank=399, SSIM rank=416, score=332257):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_ONE_ORIGINAL, scanned_pixel_percent=0.5, alpha=0.25, beta=0.25, adaptiveFraction=0.3, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=3.0, temporalResidualConfidenceScale=50.0
+
+  --- scanned_pixel_percent = 1.0 ---
+    Best PSNR (mean=37.6401):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_ONE_ORIGINAL, scanned_pixel_percent=1.0, alpha=5.0, beta=5.0, adaptiveFraction=0.3, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=3.0, temporalResidualConfidenceScale=250.0
+    Best SSIM (mean=0.9157):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_ONE_ORIGINAL, scanned_pixel_percent=1.0, alpha=10.0, beta=10.0, adaptiveFraction=0.3, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=3.0, temporalResidualConfidenceScale=25.0
+    Best Combined (PSNR rank=6, SSIM rank=4, score=52):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_ONE_ORIGINAL, scanned_pixel_percent=1.0, alpha=5.0, beta=5.0, adaptiveFraction=0.5, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=6.0, temporalResidualConfidenceScale=50.0
+    Worst PSNR (mean=32.5058):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_ONE_ORIGINAL, scanned_pixel_percent=1.0, alpha=0.25, beta=0.25, adaptiveFraction=0.0, minDensityGamma=0.1, sampleSequence=uniform, temporalMethod=temporal_variance, temporalResidualCutoff=12.0, temporalResidualConfidenceScale=100.0
+    Worst SSIM (mean=0.8596):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_ONE_ORIGINAL, scanned_pixel_percent=1.0, alpha=0.25, beta=0.25, adaptiveFraction=0.1, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=3.0, temporalResidualConfidenceScale=50.0
+    Worst Combined (PSNR rank=404, SSIM rank=416, score=336272):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_ONE_ORIGINAL, scanned_pixel_percent=1.0, alpha=0.25, beta=0.25, adaptiveFraction=0.3, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=3.0, temporalResidualConfidenceScale=50.0
+
+  --- scanned_pixel_percent = 2.0 ---
+    Best PSNR (mean=38.5849):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_ONE_ORIGINAL, scanned_pixel_percent=2.0, alpha=5.0, beta=5.0, adaptiveFraction=0.3, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=3.0, temporalResidualConfidenceScale=50.0
+    Best SSIM (mean=0.9205):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_ONE_ORIGINAL, scanned_pixel_percent=2.0, alpha=10.0, beta=10.0, adaptiveFraction=0.3, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=3.0, temporalResidualConfidenceScale=250.0
+    Best Combined (PSNR rank=10, SSIM rank=1, score=101):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_ONE_ORIGINAL, scanned_pixel_percent=2.0, alpha=10.0, beta=10.0, adaptiveFraction=0.3, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=3.0, temporalResidualConfidenceScale=250.0
+    Worst PSNR (mean=33.1566):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_ONE_ORIGINAL, scanned_pixel_percent=2.0, alpha=0.25, beta=0.25, adaptiveFraction=0.5, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=3.0, temporalResidualConfidenceScale=50.0
+    Worst SSIM (mean=0.8536):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_ONE_ORIGINAL, scanned_pixel_percent=2.0, alpha=0.25, beta=0.25, adaptiveFraction=0.1, minDensityGamma=0.1, sampleSequence=stratified, temporalMethod=temporal_variance, temporalResidualCutoff=25.0, temporalResidualConfidenceScale=100.0
+    Worst Combined (PSNR rank=412, SSIM rank=409, score=337025):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_ONE_ORIGINAL, scanned_pixel_percent=2.0, alpha=0.25, beta=0.25, adaptiveFraction=0.1, minDensityGamma=0.1, sampleSequence=stratified, temporalMethod=temporal_variance, temporalResidualCutoff=12.0, temporalResidualConfidenceScale=100.0
+
+  --- scanned_pixel_percent = 5.0 ---
+    Best PSNR (mean=39.5341):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_ONE_ORIGINAL, scanned_pixel_percent=5.0, alpha=10.0, beta=10.0, adaptiveFraction=0.3, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=3.0, temporalResidualConfidenceScale=25.0
+    Best SSIM (mean=0.9253):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_ONE_ORIGINAL, scanned_pixel_percent=5.0, alpha=10.0, beta=10.0, adaptiveFraction=0.5, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=3.0, temporalResidualConfidenceScale=250.0
+    Best Combined (PSNR rank=3, SSIM rank=1, score=10):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_ONE_ORIGINAL, scanned_pixel_percent=5.0, alpha=10.0, beta=10.0, adaptiveFraction=0.5, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=3.0, temporalResidualConfidenceScale=250.0
+    Worst PSNR (mean=34.2243):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_ONE_ORIGINAL, scanned_pixel_percent=5.0, alpha=0.25, beta=0.25, adaptiveFraction=0.5, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=3.0, temporalResidualConfidenceScale=50.0
+    Worst SSIM (mean=0.8565):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_ONE_ORIGINAL, scanned_pixel_percent=5.0, alpha=0.25, beta=0.25, adaptiveFraction=0.1, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=25.0, temporalResidualConfidenceScale=100.0
+    Worst Combined (PSNR rank=402, SSIM rank=390, score=313704):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_ONE_ORIGINAL, scanned_pixel_percent=5.0, alpha=0.25, beta=0.25, adaptiveFraction=0.1, minDensityGamma=0.1, sampleSequence=uniform, temporalMethod=temporal_variance, temporalResidualCutoff=12.0, temporalResidualConfidenceScale=100.0
+
+--- LI_EXPULSION_TWO_10FPS ---
+
+  --- scanned_pixel_percent = 0.1 ---
+    Best PSNR (mean=34.0422):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_TWO_10FPS, scanned_pixel_percent=0.1, alpha=1.0, beta=1.0, adaptiveFraction=0.1, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=3.0, temporalResidualConfidenceScale=250.0
+    Best SSIM (mean=0.8828):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_TWO_10FPS, scanned_pixel_percent=0.1, alpha=0.25, beta=0.25, adaptiveFraction=0.1, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=3.0, temporalResidualConfidenceScale=50.0
+    Best Combined (PSNR rank=16, SSIM rank=3, score=265):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_TWO_10FPS, scanned_pixel_percent=0.1, alpha=0.25, beta=0.25, adaptiveFraction=0.1, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=3.0, temporalResidualConfidenceScale=250.0
+    Worst PSNR (mean=28.4910):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_TWO_10FPS, scanned_pixel_percent=0.1, alpha=10.0, beta=10.0, adaptiveFraction=0.0, minDensityGamma=0.1, sampleSequence=stratified, temporalMethod=temporal_variance, temporalResidualCutoff=25.0, temporalResidualConfidenceScale=250.0
+    Worst SSIM (mean=0.8330):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_TWO_10FPS, scanned_pixel_percent=0.1, alpha=10.0, beta=10.0, adaptiveFraction=0.0, minDensityGamma=0.1, sampleSequence=stratified, temporalMethod=temporal_variance, temporalResidualCutoff=25.0, temporalResidualConfidenceScale=250.0
+    Worst Combined (PSNR rank=420, SSIM rank=420, score=352800):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_TWO_10FPS, scanned_pixel_percent=0.1, alpha=10.0, beta=10.0, adaptiveFraction=0.0, minDensityGamma=0.1, sampleSequence=stratified, temporalMethod=temporal_variance, temporalResidualCutoff=25.0, temporalResidualConfidenceScale=250.0
+
+  --- scanned_pixel_percent = 0.5 ---
+    Best PSNR (mean=37.0400):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_TWO_10FPS, scanned_pixel_percent=0.5, alpha=1.0, beta=1.0, adaptiveFraction=0.1, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=3.0, temporalResidualConfidenceScale=100.0
+    Best SSIM (mean=0.9013):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_TWO_10FPS, scanned_pixel_percent=0.5, alpha=1.0, beta=1.0, adaptiveFraction=0.1, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=3.0, temporalResidualConfidenceScale=100.0
+    Best Combined (PSNR rank=1, SSIM rank=1, score=2):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_TWO_10FPS, scanned_pixel_percent=0.5, alpha=1.0, beta=1.0, adaptiveFraction=0.1, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=3.0, temporalResidualConfidenceScale=100.0
+    Worst PSNR (mean=32.6587):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_TWO_10FPS, scanned_pixel_percent=0.5, alpha=10.0, beta=10.0, adaptiveFraction=0.0, minDensityGamma=0.1, sampleSequence=uniform, temporalMethod=temporal_variance, temporalResidualCutoff=25.0, temporalResidualConfidenceScale=100.0
+    Worst SSIM (mean=0.8661):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_TWO_10FPS, scanned_pixel_percent=0.5, alpha=10.0, beta=10.0, adaptiveFraction=0.0, minDensityGamma=0.1, sampleSequence=uniform, temporalMethod=temporal_variance, temporalResidualCutoff=25.0, temporalResidualConfidenceScale=100.0
+    Worst Combined (PSNR rank=420, SSIM rank=420, score=352800):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_TWO_10FPS, scanned_pixel_percent=0.5, alpha=10.0, beta=10.0, adaptiveFraction=0.0, minDensityGamma=0.1, sampleSequence=uniform, temporalMethod=temporal_variance, temporalResidualCutoff=25.0, temporalResidualConfidenceScale=100.0
+
+  --- scanned_pixel_percent = 1.0 ---
+    Best PSNR (mean=37.9879):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_TWO_10FPS, scanned_pixel_percent=1.0, alpha=1.0, beta=1.0, adaptiveFraction=0.1, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=3.0, temporalResidualConfidenceScale=100.0
+    Best SSIM (mean=0.9085):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_TWO_10FPS, scanned_pixel_percent=1.0, alpha=1.0, beta=1.0, adaptiveFraction=0.1, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=3.0, temporalResidualConfidenceScale=50.0
+    Best Combined (PSNR rank=3, SSIM rank=2, score=13):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_TWO_10FPS, scanned_pixel_percent=1.0, alpha=1.0, beta=1.0, adaptiveFraction=0.1, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=3.0, temporalResidualConfidenceScale=25.0
+    Worst PSNR (mean=34.4685):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_TWO_10FPS, scanned_pixel_percent=1.0, alpha=10.0, beta=10.0, adaptiveFraction=0.0, minDensityGamma=0.1, sampleSequence=uniform, temporalMethod=temporal_variance, temporalResidualCutoff=25.0, temporalResidualConfidenceScale=100.0
+    Worst SSIM (mean=0.8802):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_TWO_10FPS, scanned_pixel_percent=1.0, alpha=10.0, beta=10.0, adaptiveFraction=0.0, minDensityGamma=0.1, sampleSequence=uniform, temporalMethod=temporal_variance, temporalResidualCutoff=25.0, temporalResidualConfidenceScale=100.0
+    Worst Combined (PSNR rank=420, SSIM rank=420, score=352800):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_TWO_10FPS, scanned_pixel_percent=1.0, alpha=10.0, beta=10.0, adaptiveFraction=0.0, minDensityGamma=0.1, sampleSequence=uniform, temporalMethod=temporal_variance, temporalResidualCutoff=25.0, temporalResidualConfidenceScale=100.0
+
+  --- scanned_pixel_percent = 2.0 ---
+    Best PSNR (mean=38.7632):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_TWO_10FPS, scanned_pixel_percent=2.0, alpha=1.0, beta=1.0, adaptiveFraction=0.1, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=3.0, temporalResidualConfidenceScale=50.0
+    Best SSIM (mean=0.9153):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_TWO_10FPS, scanned_pixel_percent=2.0, alpha=1.0, beta=1.0, adaptiveFraction=0.1, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=3.0, temporalResidualConfidenceScale=250.0
+    Best Combined (PSNR rank=1, SSIM rank=3, score=10):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_TWO_10FPS, scanned_pixel_percent=2.0, alpha=1.0, beta=1.0, adaptiveFraction=0.1, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=3.0, temporalResidualConfidenceScale=50.0
+    Worst PSNR (mean=36.0821):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_TWO_10FPS, scanned_pixel_percent=2.0, alpha=10.0, beta=10.0, adaptiveFraction=0.0, minDensityGamma=0.1, sampleSequence=uniform, temporalMethod=temporal_variance, temporalResidualCutoff=25.0, temporalResidualConfidenceScale=100.0
+    Worst SSIM (mean=0.8933):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_TWO_10FPS, scanned_pixel_percent=2.0, alpha=10.0, beta=10.0, adaptiveFraction=0.0, minDensityGamma=0.1, sampleSequence=uniform, temporalMethod=temporal_variance, temporalResidualCutoff=25.0, temporalResidualConfidenceScale=100.0
+    Worst Combined (PSNR rank=420, SSIM rank=420, score=352800):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_TWO_10FPS, scanned_pixel_percent=2.0, alpha=10.0, beta=10.0, adaptiveFraction=0.0, minDensityGamma=0.1, sampleSequence=uniform, temporalMethod=temporal_variance, temporalResidualCutoff=25.0, temporalResidualConfidenceScale=100.0
+
+  --- scanned_pixel_percent = 5.0 ---
+    Best PSNR (mean=39.7744):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_TWO_10FPS, scanned_pixel_percent=5.0, alpha=1.0, beta=1.0, adaptiveFraction=0.1, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=3.0, temporalResidualConfidenceScale=100.0
+    Best SSIM (mean=0.9269):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_TWO_10FPS, scanned_pixel_percent=5.0, alpha=0.25, beta=0.25, adaptiveFraction=0.1, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=3.0, temporalResidualConfidenceScale=25.0
+    Best Combined (PSNR rank=1, SSIM rank=5, score=26):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_TWO_10FPS, scanned_pixel_percent=5.0, alpha=1.0, beta=1.0, adaptiveFraction=0.1, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=3.0, temporalResidualConfidenceScale=100.0
+    Worst PSNR (mean=37.7000):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_TWO_10FPS, scanned_pixel_percent=5.0, alpha=10.0, beta=10.0, adaptiveFraction=0.0, minDensityGamma=0.1, sampleSequence=uniform, temporalMethod=temporal_variance, temporalResidualCutoff=12.0, temporalResidualConfidenceScale=100.0
+    Worst SSIM (mean=0.9082):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_TWO_10FPS, scanned_pixel_percent=5.0, alpha=10.0, beta=10.0, adaptiveFraction=0.0, minDensityGamma=0.1, sampleSequence=uniform, temporalMethod=temporal_variance, temporalResidualCutoff=25.0, temporalResidualConfidenceScale=100.0
+    Worst Combined (PSNR rank=420, SSIM rank=418, score=351124):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_TWO_10FPS, scanned_pixel_percent=5.0, alpha=10.0, beta=10.0, adaptiveFraction=0.0, minDensityGamma=0.1, sampleSequence=uniform, temporalMethod=temporal_variance, temporalResidualCutoff=12.0, temporalResidualConfidenceScale=100.0
+
+--- LI_EXPULSION_TWO_ORIGINAL ---
+
+  --- scanned_pixel_percent = 0.1 ---
+    Best PSNR (mean=29.3257):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_TWO_ORIGINAL, scanned_pixel_percent=0.1, alpha=5.0, beta=5.0, adaptiveFraction=0.5, minDensityGamma=0.1, sampleSequence=stratified, temporalMethod=temporal_variance, temporalResidualCutoff=12.0, temporalResidualConfidenceScale=100.0
+    Best SSIM (mean=0.8282):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_TWO_ORIGINAL, scanned_pixel_percent=0.1, alpha=3.0, beta=3.0, adaptiveFraction=0.5, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=12.0, temporalResidualConfidenceScale=25.0
+    Best Combined (PSNR rank=6, SSIM rank=1, score=37):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_TWO_ORIGINAL, scanned_pixel_percent=0.1, alpha=3.0, beta=3.0, adaptiveFraction=0.5, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=12.0, temporalResidualConfidenceScale=25.0
+    Worst PSNR (mean=27.3926):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_TWO_ORIGINAL, scanned_pixel_percent=0.1, alpha=0.25, beta=0.25, adaptiveFraction=0.0, minDensityGamma=0.1, sampleSequence=uniform, temporalMethod=temporal_variance, temporalResidualCutoff=25.0, temporalResidualConfidenceScale=250.0
+    Worst SSIM (mean=0.8039):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_TWO_ORIGINAL, scanned_pixel_percent=0.1, alpha=0.25, beta=0.25, adaptiveFraction=0.5, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=12.0, temporalResidualConfidenceScale=25.0
+    Worst Combined (PSNR rank=417, SSIM rank=415, score=346114):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_TWO_ORIGINAL, scanned_pixel_percent=0.1, alpha=0.25, beta=0.25, adaptiveFraction=0.0, minDensityGamma=0.1, sampleSequence=stratified, temporalMethod=temporal_variance, temporalResidualCutoff=25.0, temporalResidualConfidenceScale=100.0
+
+  --- scanned_pixel_percent = 0.5 ---
+    Best PSNR (mean=33.4653):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_TWO_ORIGINAL, scanned_pixel_percent=0.5, alpha=5.0, beta=5.0, adaptiveFraction=0.3, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=3.0, temporalResidualConfidenceScale=25.0
+    Best SSIM (mean=0.8559):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_TWO_ORIGINAL, scanned_pixel_percent=0.5, alpha=3.0, beta=3.0, adaptiveFraction=0.3, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=6.0, temporalResidualConfidenceScale=100.0
+    Best Combined (PSNR rank=3, SSIM rank=16, score=265):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_TWO_ORIGINAL, scanned_pixel_percent=0.5, alpha=5.0, beta=5.0, adaptiveFraction=0.3, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=6.0, temporalResidualConfidenceScale=250.0
+    Worst PSNR (mean=29.3052):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_TWO_ORIGINAL, scanned_pixel_percent=0.5, alpha=0.25, beta=0.25, adaptiveFraction=0.0, minDensityGamma=0.1, sampleSequence=uniform, temporalMethod=temporal_variance, temporalResidualCutoff=25.0, temporalResidualConfidenceScale=250.0
+    Worst SSIM (mean=0.7928):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_TWO_ORIGINAL, scanned_pixel_percent=0.5, alpha=0.25, beta=0.25, adaptiveFraction=0.1, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=6.0, temporalResidualConfidenceScale=250.0
+    Worst Combined (PSNR rank=415, SSIM rank=406, score=337061):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_TWO_ORIGINAL, scanned_pixel_percent=0.5, alpha=0.25, beta=0.25, adaptiveFraction=0.0, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=25.0, temporalResidualConfidenceScale=100.0
+
+  --- scanned_pixel_percent = 1.0 ---
+    Best PSNR (mean=35.0428):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_TWO_ORIGINAL, scanned_pixel_percent=1.0, alpha=5.0, beta=5.0, adaptiveFraction=0.3, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=3.0, temporalResidualConfidenceScale=25.0
+    Best SSIM (mean=0.8674):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_TWO_ORIGINAL, scanned_pixel_percent=1.0, alpha=10.0, beta=10.0, adaptiveFraction=0.1, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=6.0, temporalResidualConfidenceScale=25.0
+    Best Combined (PSNR rank=2, SSIM rank=4, score=20):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_TWO_ORIGINAL, scanned_pixel_percent=1.0, alpha=5.0, beta=5.0, adaptiveFraction=0.3, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=3.0, temporalResidualConfidenceScale=50.0
+    Worst PSNR (mean=29.9352):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_TWO_ORIGINAL, scanned_pixel_percent=1.0, alpha=0.25, beta=0.25, adaptiveFraction=0.0, minDensityGamma=0.1, sampleSequence=uniform, temporalMethod=temporal_variance, temporalResidualCutoff=25.0, temporalResidualConfidenceScale=100.0
+    Worst SSIM (mean=0.7797):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_TWO_ORIGINAL, scanned_pixel_percent=1.0, alpha=0.25, beta=0.25, adaptiveFraction=0.1, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=3.0, temporalResidualConfidenceScale=25.0
+    Worst Combined (PSNR rank=415, SSIM rank=415, score=344450):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_TWO_ORIGINAL, scanned_pixel_percent=1.0, alpha=0.25, beta=0.25, adaptiveFraction=0.1, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=25.0, temporalResidualConfidenceScale=50.0
+
+  --- scanned_pixel_percent = 2.0 ---
+    Best PSNR (mean=36.2371):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_TWO_ORIGINAL, scanned_pixel_percent=2.0, alpha=10.0, beta=10.0, adaptiveFraction=0.3, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=3.0, temporalResidualConfidenceScale=25.0
+    Best SSIM (mean=0.8800):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_TWO_ORIGINAL, scanned_pixel_percent=2.0, alpha=10.0, beta=10.0, adaptiveFraction=0.3, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=6.0, temporalResidualConfidenceScale=25.0
+    Best Combined (PSNR rank=1, SSIM rank=2, score=5):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_TWO_ORIGINAL, scanned_pixel_percent=2.0, alpha=10.0, beta=10.0, adaptiveFraction=0.3, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=3.0, temporalResidualConfidenceScale=25.0
+    Worst PSNR (mean=30.5250):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_TWO_ORIGINAL, scanned_pixel_percent=2.0, alpha=0.25, beta=0.25, adaptiveFraction=0.1, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=25.0, temporalResidualConfidenceScale=50.0
+    Worst SSIM (mean=0.7720):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_TWO_ORIGINAL, scanned_pixel_percent=2.0, alpha=0.25, beta=0.25, adaptiveFraction=0.1, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=25.0, temporalResidualConfidenceScale=250.0
+    Worst Combined (PSNR rank=420, SSIM rank=418, score=351124):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_TWO_ORIGINAL, scanned_pixel_percent=2.0, alpha=0.25, beta=0.25, adaptiveFraction=0.1, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=25.0, temporalResidualConfidenceScale=50.0
+
+  --- scanned_pixel_percent = 5.0 ---
+    Best PSNR (mean=37.6105):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_TWO_ORIGINAL, scanned_pixel_percent=5.0, alpha=10.0, beta=10.0, adaptiveFraction=0.3, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=3.0, temporalResidualConfidenceScale=100.0
+    Best SSIM (mean=0.8941):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_TWO_ORIGINAL, scanned_pixel_percent=5.0, alpha=10.0, beta=10.0, adaptiveFraction=0.3, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=6.0, temporalResidualConfidenceScale=100.0
+    Best Combined (PSNR rank=2, SSIM rank=5, score=29):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_TWO_ORIGINAL, scanned_pixel_percent=5.0, alpha=10.0, beta=10.0, adaptiveFraction=0.3, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=3.0, temporalResidualConfidenceScale=25.0
+    Worst PSNR (mean=31.6179):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_TWO_ORIGINAL, scanned_pixel_percent=5.0, alpha=0.25, beta=0.25, adaptiveFraction=0.1, minDensityGamma=0.1, sampleSequence=stratified, temporalMethod=temporal_variance, temporalResidualCutoff=25.0, temporalResidualConfidenceScale=100.0
+    Worst SSIM (mean=0.7812):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_TWO_ORIGINAL, scanned_pixel_percent=5.0, alpha=0.25, beta=0.25, adaptiveFraction=0.1, minDensityGamma=0.1, sampleSequence=halton, temporalMethod=temporal_variance, temporalResidualCutoff=25.0, temporalResidualConfidenceScale=250.0
+    Worst Combined (PSNR rank=420, SSIM rank=419, score=351961):
+      withTemporalSampler=True, withTemporalReconstruction=True, gt_name=LI_EXPULSION_TWO_ORIGINAL, scanned_pixel_percent=5.0, alpha=0.25, beta=0.25, adaptiveFraction=0.1, minDensityGamma=0.1, sampleSequence=stratified, temporalMethod=temporal_variance, temporalResidualCutoff=25.0, temporalResidualConfidenceScale=100.0
