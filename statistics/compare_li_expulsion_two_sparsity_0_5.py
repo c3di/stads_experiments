@@ -58,32 +58,32 @@ def main():
             "temporal_residual_cutoff": 25.0,
             "temporal_residual_confidence_scale": 250.0
         },
-        # Config 4
+        # Config 4 (new best 3):
         {
             **base_config,
-            "alpha": 0.25,
-            "adaptive_fraction": 0.0,
-            "sample_sequence": "uniform",
-            "temporal_residual_cutoff": 25.0,
-            "temporal_residual_confidence_scale": 250.0
+            "alpha": 5.0,
+            "adaptive_fraction": 0.3,
+            "sample_sequence": "halton",
+            "temporal_residual_cutoff": 3.0,
+            "temporal_residual_confidence_scale": 25.0
         },
         # Config 5
         {
             **base_config,
-            "alpha": 0.25,
-            "adaptive_fraction": 0.1,
-            "sample_sequence": "stratified",
-            "temporal_residual_cutoff": 25.0,
-            "temporal_residual_confidence_scale": 250.0
+            "alpha": 3.0,
+            "adaptive_fraction": 0.3,
+            "sample_sequence": "halton",
+            "temporal_residual_cutoff": 6.0,
+            "temporal_residual_confidence_scale": 100.0
         },
         # Config 6
         {
             **base_config,
-            "alpha": 0.25,
-            "adaptive_fraction": 0.0,
+            "alpha": 5.0,
+            "adaptive_fraction": 0.3,
             "sample_sequence": "halton",
-            "temporal_residual_cutoff": 25.0,
-            "temporal_residual_confidence_scale": 100.0
+            "temporal_residual_cutoff": 6.0,
+            "temporal_residual_confidence_scale": 250.0
         }
     ]
     
