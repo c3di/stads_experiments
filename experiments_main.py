@@ -38,17 +38,17 @@ TEMPORAL_SAMPLING_OPTIONS: List[bool] = [True]
 TEMPORAL_RECONSTRUCTION_OPTIONS: List[bool] = [True]
 
 TEMPORAL_METHODS: List[str] = ["temporal_variance"]
-TEMPORAL_RESIDUAL_CUTOFFS: List[float] = [12.0, 25.0]#, 50.0]
-TEMPORAL_RESIDUAL_CONFIDENCE_SCALES: List[float] = [100.0, 250.0]#, 500.0]
-ADAPTIVE_REFINEMENT_FRACTIONS: List[float] = [0.0, 0.1, 0.3, 0.5]
+TEMPORAL_RESIDUAL_CUTOFFS: List[float] = [3.0, 6.0,12.0, 25.0]#, 50.0]
+TEMPORAL_RESIDUAL_CONFIDENCE_SCALES: List[float] = [25.0, 50.0,100.0, 250.0]#, 500.0]
+ADAPTIVE_REFINEMENT_FRACTIONS: List[float] = [0.1, 0.3, 0.5]
 MIN_DENSITY_GAMMAS: List[float] = [0.1]
 
-SAMPLE_SEQUENCES: List[str] = ["uniform", "stratified", "halton"]
+SAMPLE_SEQUENCES: List[str] = ["halton"]
 
 DEBUG_IMAGES_ENABLED = True
 DEBUG_IMAGES_DICT = (
     #debug_images_dict({"reconstruction", "samples", "pdf", "pdf_spatial", "pdf_temporal", "flow", "temporal_variance"})
-    debug_images_dict({"reconstruction", "samples"})
+    debug_images_dict({"reconstruction"})
     if DEBUG_IMAGES_ENABLED else None
 )
 
@@ -65,7 +65,7 @@ STANDARD_WORKER_POOL_SIZE = 6
 #   ExperimentRunManager.NO_JSON - No JSON persistence (original behavior)
 #   ExperimentRunManager.USE_ONLY - Use only JSON file, skip assembly, run only unfinished
 #   ExperimentRunManager.USE_AND_UPDATE - Merge assembly with JSON, filter finished, add new configs
-JSON_MODE = ExperimentRunManager.USE_ONLY
+JSON_MODE = ExperimentRunManager.USE_AND_UPDATE
 JSON_PATH = os.path.join(output_dir, "experiments_state.json")
 
 # Global experiment run manager
@@ -279,6 +279,7 @@ def main():
     for gt_name in low_dwell_gts:
         for target_pixel_percent in SCANNED_PIXELS_PERCENTAGES: 
             low_dwell_tasks.append((gt_name, target_pixel_percent))
+    low_dwell_tasks = [] #remove this to re-enable low dwell tasks
     with ProcessPoolExecutor(max_workers=STANDARD_WORKER_POOL_SIZE) as executor:
         futures = {executor.submit(run_low_dwell_time_sampler, *task): task for task in low_dwell_tasks}
         for future in as_completed(futures):
