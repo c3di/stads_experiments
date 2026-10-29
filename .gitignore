@@ -88,6 +88,7 @@ statistics/parameter_plots/
 statistics/comparison_*.tiff
 statistics/result_comparison_*.tiff
 statistics/best_config_comparisons/
+best_config_comparisons/
 
 # Video dynamics analysis outputs
 statistics/video_dynamics_results.csv
