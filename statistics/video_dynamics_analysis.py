@@ -442,37 +442,12 @@ def _place_scatter_labels(ax, fig, xs, ys, labels, marker_sizes, obstacles):
         placed.append(best_bbox)
 
 
-def plot_dynamics_scatter(
-    results: List[Dict],
-    output_path: Optional[str] = None,
-    show: bool = True,
-    relative: bool = False,
-    labels: Optional[Dict[str, str]] = None
-):
+def _draw_dynamics_axes(ax, results, relative=False, labels=None, with_title=True):
     """
-    Plot ground truths on a 2D scatter of temporal activity vs spatial concentration.
-    
-    Args:
-        results: List of result dicts from analyze_all_ground_truths
-        output_path: Path to save the plot (optional)
-        show: Whether to display the plot
-        relative: Plot the min-max normalized metrics (position within the
-                 result space of all videos) instead of the absolute ones
-        labels: Optional mapping from ground truth names to display names
-                 used verbatim in the plot; names without an entry fall
-                 back to the in-code name with underscores replaced
+    Draw one dynamics scatter panel (absolute or relative metrics) onto ax,
+    without placing the point labels. Returns the arguments for
+    _place_scatter_labels, which must run after the figure layout is final.
     """
-    try:
-        import matplotlib.pyplot as plt
-    except ImportError:
-        print("matplotlib not available, cannot plot")
-        return
-    
-    if not results:
-        print("No results to plot")
-        return
-    
-    # Extract data
     names = [r['gt_name'] for r in results]
     frame_counts = [r['num_frames'] for r in results]
     if relative:
@@ -483,9 +458,6 @@ def plot_dynamics_scatter(
     else:
         activities = [r['temporal_activity'] for r in results]
         concentrations = [r['spatial_concentration'] for r in results]
-    
-    # Create figure
-    fig, ax = plt.subplots(figsize=(10, 8))
     
     # Plot scatter (fully opaque markers, sized by frame count)
     sizes = [fc * 2 for fc in frame_counts]
@@ -502,11 +474,13 @@ def plot_dynamics_scatter(
     if relative:
         ax.set_xlabel('Relative Temporal Activity (0=lowest, 1=highest in GT set)', fontsize=12)
         ax.set_ylabel('Relative Spatial Concentration (0=lowest, 1=highest in GT set)', fontsize=12)
-        ax.set_title('Ground Truth Video Dynamics Analysis (relative)', fontsize=14)
+        if with_title:
+            ax.set_title('Ground Truth Video Dynamics Analysis (relative)', fontsize=14)
     else:
         ax.set_xlabel('Temporal Activity (change relative to video contrast)', fontsize=12)
         ax.set_ylabel('Spatial Concentration (0=Global, 1=Localized)', fontsize=12)
-        ax.set_title('Ground Truth Video Dynamics Analysis', fontsize=14)
+        if with_title:
+            ax.set_title('Ground Truth Video Dynamics Analysis', fontsize=14)
     ax.grid(True, alpha=0.3)
     if relative:
         ax.set_xlim((-0.05, 1.05))
@@ -538,37 +512,128 @@ def plot_dynamics_scatter(
     else:
         point_labels = [_split_label(name.replace('_', ' ')) for name in names]
     
+    return ax, activities, concentrations, point_labels, sizes, quadrant_texts
+
+
+def _save_figure(fig, output_path, dpi=300):
+    """Save a figure, clearing a pre-existing target first: stale Windows
+    file states (delete-pending, held handles) make rewrites fail with
+    cryptic Errno 22 instead of overwriting cleanly."""
+    out_dir = os.path.dirname(output_path)
+    if out_dir:
+        os.makedirs(out_dir, exist_ok=True)
+    try:
+        os.remove(output_path)
+    except OSError:
+        pass
+    fig.savefig(output_path, dpi=dpi)
+    print(f"Plot saved to: {output_path}")
+
+
+def plot_dynamics_scatter(
+    results: List[Dict],
+    output_path: Optional[str] = None,
+    show: bool = True,
+    relative: bool = False,
+    labels: Optional[Dict[str, str]] = None
+):
+    """
+    Plot ground truths on a 2D scatter of temporal activity vs spatial concentration.
+    
+    Args:
+        results: List of result dicts from analyze_all_ground_truths
+        output_path: Path to save the plot (optional)
+        show: Whether to display the plot
+        relative: Plot the min-max normalized metrics (position within the
+                 result space of all videos) instead of the absolute ones
+        labels: Optional mapping from ground truth names to display names
+                 used verbatim in the plot; names without an entry fall
+                 back to the in-code name with underscores replaced
+    """
+    try:
+        import matplotlib.pyplot as plt
+    except ImportError:
+        print("matplotlib not available, cannot plot")
+        return
+    
+    if not results:
+        print("No results to plot")
+        return
+    
+    # Create figure
+    fig, ax = plt.subplots(figsize=(10, 8))
+    
+    placement = _draw_dynamics_axes(ax, results, relative, labels)
+    
     plt.tight_layout()
     
     # Place point labels after the layout is final so candidate positions
     # are evaluated against the true figure geometry
-    _place_scatter_labels(
-        ax, fig,
-        activities, concentrations,
-        point_labels,
-        sizes,
-        quadrant_texts,
-    )
+    _place_scatter_labels(ax, fig, *placement[1:])
     
     if output_path:
-        out_dir = os.path.dirname(output_path)
-        if out_dir:
-            os.makedirs(out_dir, exist_ok=True)
-        # Clear a pre-existing target: stale Windows file states
-        # (delete-pending, held handles) make rewrites fail with
-        # cryptic Errno 22 instead of overwriting cleanly
-        try:
-            os.remove(output_path)
-        except OSError:
-            pass
-        plt.savefig(output_path, dpi=300)
-        print(f"Plot saved to: {output_path}")
+        _save_figure(fig, output_path, dpi=300)
     
     if show:
         plt.show()
     
     plt.close(fig)
     return fig, ax
+
+
+def plot_dynamics_side_by_side(
+    results: List[Dict],
+    output_path: Optional[str] = None,
+    show: bool = True,
+    labels: Optional[Dict[str, str]] = None,
+    dpi: int = 600
+):
+    """
+    Plot the absolute and the relative dynamics scatters side by side in
+    one figure, without a headline title.
+    
+    Args:
+        results: List of result dicts from analyze_all_ground_truths
+        output_path: Path to save the plot (optional)
+        show: Whether to display the plot
+        labels: Optional mapping from ground truth names to display names
+                 used verbatim in the plot; names without an entry fall
+                 back to the in-code name with underscores replaced
+        dpi: Resolution for the saved figure (default: 600)
+    """
+    try:
+        import matplotlib.pyplot as plt
+    except ImportError:
+        print("matplotlib not available, cannot plot")
+        return
+    
+    if not results:
+        print("No results to plot")
+        return
+    
+    # No suptitle: the panels speak through their axis labels
+    fig, (ax_abs, ax_rel) = plt.subplots(1, 2, figsize=(20, 8))
+    
+    place_abs = _draw_dynamics_axes(ax_abs, results, relative=False,
+                                    labels=labels, with_title=False)
+    place_rel = _draw_dynamics_axes(ax_rel, results, relative=True,
+                                    labels=labels, with_title=False)
+    
+    plt.tight_layout()
+    
+    # Place point labels after the layout is final so candidate positions
+    # are evaluated against the true figure geometry
+    _place_scatter_labels(ax_abs, fig, *place_abs[1:])
+    _place_scatter_labels(ax_rel, fig, *place_rel[1:])
+    
+    if output_path:
+        _save_figure(fig, output_path, dpi=dpi)
+    
+    if show:
+        plt.show()
+    
+    plt.close(fig)
+    return fig, (ax_abs, ax_rel)
 
 
 def print_results_table(results: List[Dict]):
