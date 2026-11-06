@@ -13,3 +13,5 @@ experiment_comparison.py (compare_xyz.py):
     Reconstruction frames als grid Darstellung für eine gegebene Anzahl an adaptive Konfigurationen plus optional low-dwell und original GTs
 result_graphic_comparison.py:
     ähnlich zu experiment_comparison, eine adaptive Konfiguration im 1x4 grid neben stratified, low-dwell GT und original GT
+    besitzt option automatisch die jeweils besten configs auszuwählen
+    
